@@ -2,7 +2,6 @@ Manifest*.toml
 docs/build/
 docs/site/
 docs/src/tutorials/scalar.md
-docs/src/tutorials/signal_background.md
 docs/src/tutorials/wren.md
 elicitation-output/
 *.cov

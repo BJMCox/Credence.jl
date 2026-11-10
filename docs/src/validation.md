@@ -1,70 +1,75 @@
 # [Beliefs and validation](@id validation-guide)
 
-## Define beliefs
+A belief states either a requirement on a statistic or an approximate target for it.
+Requirements determine whether a candidate is acceptable. Approximate targets measure
+how closely a family represents the elicited judgments.
 
-| Belief                                                  | Meaning                                                                    |
-|:------------------------------------------------------- |:-------------------------------------------------------------------------- |
-| `Hard(id, statistic, AtLeast(x))`                       | The statistic must be at least `x`.                                        |
-| `Hard(id, statistic, AtMost(x))`                        | The statistic must be at most `x`.                                         |
-| `Hard(id, statistic, Between(a, b))`                    | The statistic must lie in the closed interval `[a, b]`.                    |
-| `Hard(id, statistic, EqualTo(x))`                       | The statistic must equal `x` exactly.                                      |
-| `Approximate(id, statistic, target; scale, importance)` | A point target with an explicit discrepancy scale and optional importance. |
+## Statistics and requirements
 
-Use `Between` to express an expert's tolerance and `EqualTo` for exact equality.
-Approximate targets contribute discrepancies to fitting and candidate comparison.
+| Belief | Interpretation |
+|:--|:--|
+| `Hard(id, statistic, AtLeast(x))` | The statistic is at least `x`. |
+| `Hard(id, statistic, AtMost(x))` | The statistic is at most `x`. |
+| `Hard(id, statistic, Between(a, b))` | The statistic lies in the closed interval `[a, b]`. |
+| `Hard(id, statistic, EqualTo(x))` | The statistic equals `x` exactly. |
+| `Approximate(id, statistic, target; scale, importance)` | Fit a point target using the given discrepancy scale and importance. |
 
-`Probability(a, b)` means `P(a < X <= b)`, including for discrete laws.
-`Quantile(p)` is the lower quantile, so it preserves atoms and support gaps.
-`Mean()` and `Std()` require those moments to exist. `Statistic(f; label)` supplies an
-analytic statistic of a measure, including properties of a joint prior.
+Use `Between` for an elicited tolerance and `EqualTo` for exact equality.
+`Probability(a, b)` denotes `P(a < X <= b)`, including for discrete measures.
+`Quantile(p)` denotes the lower quantile, with atoms and support gaps retained.
+`Mean()` and `Std()` apply when their population moments exist.
+`Statistic(f; label)` evaluates a custom analytic function of the measure.
 
-The [input guide](@ref input-guide) covers named parameter groups, joint and derived
-quantities, array targets, and standard family descriptors.
+[Named inputs](@ref input-guide) explains how to attach these beliefs to scalar, array,
+joint, and derived quantities.
 
-## Fit and compare candidates
+## Fitting
 
-Each `Candidate` supplies a measure builder, parameter starts, and optional parameter bounds.
-Builders must return normalized MeasureBase measures. A failed start remains in the report
-with its error. Successful numerical fits retain the solver result and its return code.
+Each candidate defines a normalized MeasureBase measure as a function of its parameters.
+It also supplies starting values and optional parameter bounds. The report retains every
+start, together with its fitted parameters and solver result, or its evaluation error.
 
-Scalar optimization minimizes the sum of squared, scale-normalized target discrepancies,
-weighted by importance. Weights are divided by their maximum first. Multiplying all weights
-by a positive constant therefore leaves the objective unchanged. Zero-weight targets contribute
-zero to the objective. Importance defaults to one per belief. Array beliefs use the average squared
-scaled error over their supplied free entries. Splitting one array belief into several
-scalar beliefs changes the weighting unless importance is redistributed explicitly.
+For each scalar target, divide the discrepancy by its scale and square the result.
+The objective sums these squared discrepancies, weighted by importance. Importance
+weights are first divided by their maximum, so a common positive rescaling leaves the
+objective unchanged. A zero weight contributes zero, and the default weight is one.
+For an array belief, the contribution is the average squared scaled discrepancy over its
+supplied free entries. Splitting an array into scalar beliefs therefore requires an
+appropriate redistribution of importance to preserve the objective.
 
-Hard beliefs become constraints. Choose a solver that supports them, such as `IPNewton()`
-from OptimizationOptimJL. The default AD choice is `Optimization.NoAD()`; pass a supported
-AD type when the solver needs derivatives. The tutorials use deterministic solvers.
-Stochastic backends need their own explicitly configured RNG through their solver options.
+Hard beliefs become optimization constraints. Use a solver that supports those constraints,
+such as `IPNewton()` from OptimizationOptimJL. Credence defaults to `Optimization.NoAD()`.
+Supply an AD type when the chosen solver requires derivatives. Configure the RNG for a
+stochastic solver through that solver's options.
 
-`compare(report)` uses each approximate target's absolute, scale-normalized discrepancy.
-It reports Pareto dominance, ties, tradeoffs, and unresolved pairs using discrepancies for
-each target separately. Importance weights affect fitting, while comparison uses the
-discrepancy vectors. Hard requirements determine feasibility.
+`Evaluate()` evaluates the supplied starts. An optimization algorithm instead retains a
+solution from each start. Subsequent comparisons concern this finite set of results.
 
-Ungrouped and combined results use `(candidate_id, start_index)`. Marginal results use
-`(target, candidate_id, start_index)`. `select(report, target, (candidate_id, start_index); ...)`
-provides a convenient marginal lookup.
+## Comparing candidates
 
-| Field          | Contents                                                          |
-|:-------------- |:----------------------------------------------------------------- |
-| `feasible`     | IDs with all hard requirements satisfied and all targets defined. |
-| `dominates`    | Ordered `(better, worse)` result pairs by target discrepancy.     |
-| `ties`         | Pairs with equal discrepancy vectors.                             |
-| `incomparable` | Pairs where improving one target worsens another.                 |
-| `unresolved`   | Pairs whose evidence cannot support an exact comparison.          |
+`compare(report)` compares absolute, scale-normalized discrepancies separately for each
+approximate target. Importance weights control fitting, while comparison uses the full
+discrepancy vector. Hard requirements determine feasibility.
 
-`Evaluate()` considers the supplied points. Optimization retains the solution from each
-start. Comparisons describe these retained results, rather than a complete Pareto frontier.
+| Field | Contents |
+|:--|:--|
+| `feasible` | Results satisfying every hard requirement, with every target defined. |
+| `dominates` | Ordered pairs in which the first result improves at least one discrepancy and worsens none. |
+| `ties` | Pairs with equal discrepancy vectors. |
+| `incomparable` | Pairs that trade improvement in one target for deterioration in another. |
+| `unresolved` | Pairs whose evidence leaves the comparison uncertain. |
 
-## Check fixed candidates
+Ungrouped and combined result IDs have the form `(candidate_id, start_index)`.
+Marginal result IDs also include the target reference. The form
+`select(report, target, (candidate_id, start_index); ...)` selects a marginal result directly.
 
-`validate(rng, report)` evaluates the retained measures afresh. Analytic measure operations
-provide the default evidence. Failed or unavailable operations produce undefined checks.
+## Validation
 
-For event probabilities, `MonteCarlo(n; alpha)` uses independent draws and Hoeffding bounds:
+`validate(rng, report)` checks the retained measures again. By default, it uses analytic
+measure operations. An unavailable or failed operation gives an undefined check.
+
+For sampled event probabilities, `MonteCarlo(n; alpha)` draws independent samples and
+constructs Hoeffding bounds:
 
 ```@example validation
 using Credence, MeasureBase, Random
@@ -77,29 +82,31 @@ check = only(only(validation.checks))
 (; estimate=check.estimate, status=check.status)
 ```
 
-The error budget is divided across all hard checks in this report. The bounds require a valid
-independent sampler. The `sampling=MonteCarlo(n)` option keeps analytic evaluators where
-available and samples remaining quantities using one shared joint batch per candidate.
-Event probabilities use Hoeffding bounds, and quantiles use DKW enclosures. Sampled means
-and dispersion statistics report estimated intervals, which cannot certify hard constraints.
-`estimate.n` records the draw count. The report and validation retain their sampling seeds.
-Repeated adaptive validation needs a separate error-budget policy. The caller owns the seeds.
+The error budget `alpha` is divided across all hard checks in the report. These bounds
+assume independent draws from the candidate measure. Quantile checks use DKW enclosures.
+Sampled means and dispersion statistics have estimated intervals, which cannot certify
+hard requirements.
 
-An enclosure wholly inside a hard requirement satisfies it. A disjoint enclosure violates it.
-Overlap remains inconclusive. Evidence marked only `:estimated` cannot certify satisfaction
-or violation. Uncertain approximate-target comparisons remain unresolved.
+With `sampling=MonteCarlo(n)`, analytic evaluators remain in use where available. Other
+statistics share one joint sample batch per candidate. `estimate.n` records the sample
+count, and reports retain their sampling seeds. Callers control the seeds and the error
+budget for repeated adaptive validation.
 
-## Accept explicitly
+A check satisfies a hard requirement when its entire enclosure lies within the required
+region. A disjoint enclosure violates the requirement. Partial overlap is inconclusive.
+Evidence marked `:estimated` supports estimation rather than certification. Approximate
+comparisons with uncertain ordering remain unresolved.
 
-`select(report, id; validation, rationale)` accepts a concrete result only when the validation
-belongs to that same report and every hard requirement is satisfied. Review the achieved approximate targets
-separately. Acceptance requires validation even when the solver reports success.
+## Selection
 
-Use `role=:reference` to retain a result for exploration without declaring acceptance.
-Selection records the role and rationale. `measure(selection)` returns the native measure,
-with report metadata retained separately.
+`select(report, id; validation, rationale)` records acceptance of a fitted result.
+The validation must belong to that report and satisfy every hard requirement.
+Review approximate targets by their achieved values, even when the solver reports success.
+Use `role=:reference` to retain a candidate for further discussion.
 
-Marginal acceptance is local. Joint beliefs stay `:pending` until one candidate covers their
-references. Acceptance of a complete joint prior requires those beliefs to be checked too.
-An accepted selection passed to `Independent` retains that exact marginal law. Calling
-`unlock(selection)` restores its fitted family start and retains its hard beliefs.
+`measure(selection)` returns the selected native measure. The selection retains its role,
+rationale, and validation separately from the prior.
+
+A marginal selection accepts its own beliefs. Acceptance of a complete joint prior also
+requires validation of the joint beliefs. An accepted selection used in `Independent`
+keeps its fitted law fixed. `unlock(selection)` permits refitting and retains its hard beliefs.

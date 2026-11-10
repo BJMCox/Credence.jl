@@ -1,6 +1,7 @@
 # [Named beliefs and candidate families](@id input-guide)
 
-Each parameter name is paired with a collection of beliefs. Each belief specifies a statistic:
+An elicitation problem pairs parameter references with beliefs and candidate families.
+For example, `S` below is a scalar and `B` is a vector with two entries:
 
 ```@example inputs
 using Credence, MeasureBase, VarNames, LinearAlgebra
@@ -19,23 +20,28 @@ beliefs = (
 nothing # hide
 ```
 
-`:S` abbreviates `@vn(S)`. Indexed and nested references such as `@vn(B[1])` and
-`@vn(detector.width)` use VarNames. A whole vector or matrix can remain one target.
-Belief IDs such as `:median` are local labels. The statistic constructor defines their meaning.
+A symbol such as `:S` is shorthand for `@vn(S)`. Use VarNames for indexed or nested
+references, such as `@vn(B[1])` or `@vn(detector.width)`. Each belief has a local identifier,
+a statistic, and a target or bound. Thus `:median` identifies the belief, while
+`Quantile(0.5)` defines the statistic being elicited.
 
-The two mean errors above use different scales. An error of one in the first entry
-counts equally to an error of two in the second. A scalar scale applies uniformly.
-Array targets and array scales must have matching axes. Each array belief contributes
-the average squared scaled error across supplied free entries. Importance defaults to one.
+## Array targets and scales
 
-Treat input arrays and retained measures as read-only. Use `replace` to revise a belief
-and fit a new report. Each report requires its own validation.
+The mean target for `B` is `[5, 7]`, with discrepancy scales `[1, 2]`. An error of one
+in the first mean therefore has the same scaled size as an error of two in the second.
+A scalar scale applies to every entry. Array targets and scales must have matching axes.
+Scales for supplied approximate targets must be positive and finite.
 
-Both `nothing` and `missing` leave an entry unspecified. A missing lower bound leaves
-the upper bound active, and conversely. A supplied approximate target needs a positive
-finite scale. Hard array bounds apply elementwise.
+Use `nothing` or `missing` for an unspecified entry. Bounds act elementwise: an omitted
+lower bound still permits an upper bound on that entry. Each array belief contributes
+the average squared scaled error over its supplied free entries. Its default importance is one.
 
-## Declare candidate families separately
+Treat input arrays as read-only. To revise a judgment, use `replace`, fit the revised
+problem, and validate the resulting report.
+
+## Candidate families
+
+Use the same parameter references to associate candidate families with the beliefs:
 
 ```@example inputs
 candidates = (
@@ -51,16 +57,15 @@ problem = Elicitation(beliefs, candidates)
 problem[:S, :median].target
 ```
 
-Standard family adapters provide valid parameter transforms and recorded starts.
-Override `starts` when external knowledge suggests better initial parameters.
-`NormalFamily(location=125.0)` fixes the location while fitting its scale.
+Family descriptors supply starting parameters and the transforms needed to keep parameters
+in their domains. Set `starts` to supply other starting values. Fixed keywords restrict the
+family: `NormalFamily(location=125.0)` fits the scale of a Normal with mean 125.
 
-An array candidate must declare its structure. `IIDFamily(LogNormalFamily(), 2)` shares
-one fitted parameter set and declares independent entries. Separate families under
-`@vn(B[1])` and `@vn(B[2])` fit separate parameter sets. A multivariate family defines
-the vector's joint law.
+For arrays, `IIDFamily(LogNormalFamily(), 2)` fits one law shared by two independent entries.
+Separate candidates for `@vn(B[1])` and `@vn(B[2])` fit their parameters separately.
+`MvLogNormalFamily(2)` instead fits a joint law for the two-dimensional vector.
 
-Custom families retain an explicit builder and named starts:
+A custom `Candidate` supplies a measure builder and starting parameter records:
 
 ```@example inputs
 custom = Candidate(
@@ -74,10 +79,14 @@ custom = Candidate(
 nothing # hide
 ```
 
-Credence converts the named record to optimizer coordinates and restores it for the
-builder and fitted result. Existing positional builders remain supported.
+Here the parameters are log shapes, so exponentiation gives positive Beta shapes. Credence
+flattens the record for optimization and restores its names when calling the builder and
+recording the fitted parameters. Builders can also accept positional parameter vectors.
 
-## Define joint and derived beliefs
+## Joint and derived quantities
+
+Place beliefs about several quantities under `Joint`. Use `Derived` for a function of
+parameter values:
 
 ```@example inputs
 joint_beliefs = (
@@ -93,22 +102,24 @@ joint_beliefs = (
 nothing # hide
 ```
 
-`Joint` reference order defines the matrix coordinates. `Derived` calls its function
-with only its declared parameter values, positionally in that order. Derived names must
-be unique within a problem.
+The order of `Joint` references determines the matrix coordinates. `Derived` passes the
+selected values to its function in reference order. Derived names must be unique within
+the problem.
 
-`Covariance()` and `Correlation()` describe one pair of scalar quantities.
-`CovarianceMatrix()` and `CorrelationMatrix()` return full matrices. Covariance matrices
-count one triangle including the diagonal. Correlation matrices exclude their fixed unit diagonal.
+`Covariance()` and `Correlation()` describe two scalar quantities. Their matrix forms,
+`CovarianceMatrix()` and `CorrelationMatrix()`, describe a vector or a `Joint` selection.
+Covariance targets count one triangle, including the diagonal. Correlation targets count
+one triangle with the fixed unit diagonal excluded.
 
-Triangular wrappers declare the supplied triangle. Full matrices must agree across their
-mirrored targets, bounds, scales, and omission patterns. Ordinary matrix-valued statistics
-retain ordinary matrix semantics. `diagnostics(problem)` flags inconsistent complete
-matrix targets. The original targets remain available for discussion.
+`UpperTriangular` and `LowerTriangular` identify the supplied triangle. In a full symmetric
+target, mirrored entries must agree in value, bounds, scales, and omission patterns.
+Other matrix-valued statistics use every supplied entry. `diagnostics(problem)` reports
+inconsistent complete covariance or correlation targets and preserves the submitted values.
 
-## Choose dependence and combinations
+## Combining families
 
-Specify dependence when combining marginal families. `Independent` constructs their product:
+Specify which marginal families form each joint candidate. `Independent` constructs a
+product measure:
 
 ```@example inputs
 joint_problem = Elicitation((beliefs..., joint_beliefs...), candidates;
@@ -120,15 +131,24 @@ joint_problem = Elicitation((beliefs..., joint_beliefs...), candidates;
 nothing # hide
 ```
 
-`AllCombinations()` explicitly requests the Cartesian product of marginal family choices.
-Combined starts cycle through factor starts instead of multiplying their counts.
+The first combination uses the Beta candidate for `S` and the multivariate LogNormal
+candidate for `B`. Independence applies between `S` and the vector `B`. The multivariate
+family determines dependence within `B`.
 
-Fit and select marginals first when useful. An accepted selection passed as an independent
-factor keeps its exact fitted law. `unlock(selection)` releases its fitted parameters while
-retaining its hard beliefs. Joint checks remain pending until a candidate covers their references.
+`AllCombinations()` constructs the Cartesian product of marginal family choices.
+For each combination, starting values cycle through the factor starts rather than taking
+their Cartesian product.
 
-Use `sampling=MonteCarlo(n)` on `fit` or `validate` when analytic evaluation is unavailable.
-Sampled beliefs share joint draws, and derived quantities reuse their evaluated values.
-Fitting replays fixed random inputs. Validation uses a separate fresh batch and records its seed.
+An accepted marginal selection can serve as a fixed factor in `Independent`. Call
+`unlock(selection)` to fit its family parameters again while retaining its hard beliefs.
+Joint checks remain `:pending` until a candidate includes all their references.
 
-The [programmatic tutorial](@ref scalar-tutorial) applies these inputs to a complete scientific example.
+## Sampled statistics
+
+Pass `sampling=MonteCarlo(n)` to `fit` or `validate` to sample statistics that lack analytic
+evaluators. Beliefs for one candidate share a batch of joint draws. Derived quantities
+reuse the values computed from those draws.
+
+Fitting reuses fixed random inputs to evaluate its objective. Validation draws a fresh
+batch and records its seed. See [Beliefs and validation](@ref validation-guide) for the
+uncertainty attached to sampled statistics.

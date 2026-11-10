@@ -1,16 +1,16 @@
-# # [A rare-event signal and background model](@id rare-event-model)
+# # Signal and background model
 #
-# This synthetic example follows the hierarchical structure of the
-# [BAT.jl extended example](https://doi.org/10.1007/s42979-021-00626-4).
-# Exposures, efficiencies, rates, energies, and prior judgments differ from the original.
-# Both the line location and detector resolution are uncertain here.
+# A rare-event experiment searches for a narrow Gaussian signal over an exponential
+# background. Five datasets have different exposures and detection efficiencies.
+# The hierarchy follows the [BAT.jl example](https://doi.org/10.1007/s42979-021-00626-4),
+# with different experimental settings, simulated data, and prior judgments.
+# Here both the signal location and detector resolution are uncertain.
 #
-# ## Experimental design and units
+# ## Parameters and units
 #
-# Exposure is measured in years, rates in events/year, and energies in keV.
-# `S` is the signal rate before efficiency. The support bounds below are illustrative
-# external assumptions. A 95% prior upper quantile is a separate judgment about probability
-# within that support.
+# Exposure is in years, rates in events/year, and energy in keV. The signal rate `S`
+# applies before detection efficiency. The bounds below represent external knowledge
+# about possible parameter values. Quantile judgments describe probability within these bounds.
 
 using Credence, MeasureBase
 using Distributions:
@@ -32,13 +32,11 @@ const location_interval = (124.0, 126.0)
 const location_center = sum(location_bounds) / 2
 nothing # hide
 
-# ## Hierarchical background and event likelihood
+# ## Background hierarchy
 #
-# For dataset i, the expected yields are exposure times background rate, and exposure
-# times efficiency times signal rate. Conditional background rates share a lognormal law.
-# Its location correction makes the conditional arithmetic mean equal to `m_B`.
-# `sigma_B` is dimensionless. `lam` is an exponential energy scale, not a decay rate:
-# Julia's `Exponential(lam)` has mean `lam`.
+# Each dataset has a background rate `B[i]`. Conditional on `m_B` and `sigma_B`, these
+# rates are independent LogNormal variables. The correction to the log location gives
+# each rate conditional mean `m_B`. The parameter `sigma_B` is their log standard deviation.
 
 function background_parameters(rng, hyperparameters)
     law = LogNormal(
@@ -50,9 +48,13 @@ function background_parameters(rng, hyperparameters)
 end
 nothing # hide
 
-# Counts follow a Poisson law. Each event energy follows a normalized mixture whose
-# weights are the expected yields. The likelihood includes every simulated energy,
-# including energies outside the plot window.
+# ## Counts and event energies
+#
+# Expected background counts equal exposure times background rate. Expected signal counts
+# also include detection efficiency. Their sum is the mean of the observed Poisson count.
+# Each event energy follows a mixture of the exponential background and Gaussian signal,
+# weighted by their expected counts. The exponential scale `lam` is its mean energy in keV.
+# Every event energy enters the likelihood, including energies outside the plotted range.
 
 function expected_yields(parameters)
     background = experiment.exposure .* parameters.B
@@ -89,24 +91,24 @@ function spectrum_loglikelihood(parameters, data)
 end
 nothing # hide
 
-# `MixtureModel` evaluates the mixture in log space for numerical stability at small
-# background scales and at `S = 0`.
-# Counts and the number of energy rows per dataset must describe the same observations.
+# The likelihood combines the Poisson counts and mixture densities of individual energies.
+# `MixtureModel` evaluates in log space to handle small scales and zero signal rates.
+# Counts and energy rows must describe the same events in each dataset.
 #
-# ## Candidate hyperpriors
+# ## Prior families
 #
-# Compare scaled Beta positive quantities with a truncated Normal location, and
-# truncated LogNormal quantities with a symmetric scaled Beta location. Both location
-# families assume symmetry about 125 keV. This is separate from probability judgments.
-# All six hyperparameters are elicited together. Their independence is an explicit
-# family assumption. Conditional backgrounds share `m_B` and `sigma_B`, so the five
-# background rates are dependent after those hyperparameters are integrated out.
+# We compare two joint hyperpriors. One uses scaled Beta distributions for the five positive
+# parameters and a truncated Normal for the signal location. The other uses truncated
+# LogNormal distributions and a symmetric scaled Beta location distribution.
+# Both location families are symmetric about 125 keV. Both joint hyperpriors assume independent
+# hyperparameters. The conditional background rates become dependent through their shared
+# uncertain mean and log standard deviation.
 
 scaled_beta(bounds, a, b) =
     LocationScale(first(bounds), last(bounds) - first(bounds), Beta(exp(a), exp(b)))
 
-# Standard descriptors define parameter transforms and starts. The location Beta
-# uses the custom form to impose symmetry explicitly through one shared shape parameter.
+# Family descriptors supply parameter transforms and starting values. A custom builder
+# gives the location Beta distribution equal shape parameters, enforcing symmetry.
 
 function signal_candidates()
     return (
@@ -166,8 +168,8 @@ function signal_combinations()
 end
 nothing # hide
 
-# These two combinations define the candidate product measures.
-# The selected product is a native MeasureBase measure.
+# Each combination lists one family for each parameter. `Independent` forms their product.
+# The following functions summarize fitted targets and solver outcomes for these combinations.
 
 function target_summary(report, id)
     result = only(filter(r -> r.id == id, report.results))
