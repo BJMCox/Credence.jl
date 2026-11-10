@@ -27,3 +27,6 @@ Plaice = {url = "https://github.com/JuliaBayes/Plaice.jl", rev = "e71dc282ce188c
 Wren = {url = "https://github.com/JuliaBayes/Wren.jl", subdir = "Wren", rev = "d402e30ec74153259e871b94b08505f029ad311c"}
 WrenCore = {url = "https://github.com/JuliaBayes/Wren.jl", subdir = "WrenCore", rev = "d402e30ec74153259e871b94b08505f029ad311c"}
 WrenDists = {url = "https://github.com/JuliaBayes/Wren.jl", subdir = "WrenDists", rev = "d402e30ec74153259e871b94b08505f029ad311c"}
+
+[compat]
+Enzyme = "0.13.218"
