@@ -17,11 +17,6 @@ for name in ("scalar", "wren")
         options...,
     )
 end
-cp(
-    joinpath(root, "assets", "logo.svg"),
-    joinpath(@__DIR__, "src", "assets", "logo.svg");
-    force=true,
-)
 
 makedocs(;
     root=@__DIR__,
@@ -33,7 +28,7 @@ makedocs(;
         canonical="https://bjmcox.github.io/Credence.jl/stable/",
         edit_link="main",
         inventory_version="",
-        assets=["assets/logo.css", "assets/favicon.ico"],
+        assets=["assets/favicon.ico"],
     ),
     pages=[
         "Getting started" => "index.md",

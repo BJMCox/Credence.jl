@@ -1,5 +1,7 @@
 # Credence.jl
 
+<a href="https://bjmcox.github.io/Credence.jl/stable/"><img src="/docs/src/assets/logo.svg" align="right" alt="Credence.jl logo" style="height: 140px;"></a>
+
 Expert-guided prior elicitation for Julia.
 
 Credence is an initial prototype. It fits scalar prior families to probability, quantile,
