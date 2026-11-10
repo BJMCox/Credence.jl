@@ -69,18 +69,35 @@ Pause if the expert cannot judge. An unanswered question does not become zero or
 prior. These 11 illustrative answers concern external knowledge, not the search events.
 
 ```@repl guided
-initial_answers = (
-    S_median=1.2, S_q95=5.0, mu_probability=0.9,
-    width_median=1.6, width_q95=2.1,
-    sigma_B_median=0.4, sigma_B_q95=0.6,
-    m_B_median=7.0, m_B_q95=10.5,
-    lam_median=55.0, lam_q95=80.0,
+initial_beliefs = (
+    :S => (
+        Approximate(:median, Quantile(0.5), 1.2; scale=1.0),
+        Approximate(:upper, Quantile(0.95), 5.0; scale=1.0),
+    ),
+    :mu => (Approximate(:central, Probability(location_interval...), 0.9; scale=0.1),),
+    :width => (
+        Approximate(:median, Quantile(0.5), 1.6; scale=0.25),
+        Approximate(:upper, Quantile(0.95), 2.1; scale=0.25),
+    ),
+    :sigma_B => (
+        Approximate(:median, Quantile(0.5), 0.4; scale=0.1),
+        Approximate(:upper, Quantile(0.95), 0.6; scale=0.1),
+    ),
+    :m_B => (
+        Approximate(:median, Quantile(0.5), 7.0; scale=2.0),
+        Approximate(:upper, Quantile(0.95), 10.5; scale=2.0),
+    ),
+    :lam => (
+        Approximate(:median, Quantile(0.5), 55.0; scale=15.0),
+        Approximate(:upper, Quantile(0.95), 80.0; scale=15.0),
+    ),
 )
 ```
 
-Read the probability statements back to the expert before fitting. `signal_beliefs` maps
-them to marginal statistics of the joint hyperprior. Its full constructors appear in the
-[model definition](@ref rare-event-model). All 11 are approximate targets. The scales
+Read the probability statements back to the expert before fitting. Each parameter key owns
+its explicitly named beliefs. `Quantile` and `Probability` define their statistics directly.
+The [model definition](@ref rare-event-model) declares candidate families separately.
+All 11 are approximate targets. The scales
 and equal importance weights are explicit fitting preferences.
 
 ## Compare candidate shapes
@@ -92,7 +109,7 @@ The dataset-specific backgrounds remain conditional on shared `m_B` and `sigma_B
 
 ```@repl guided
 candidates = signal_candidates();
-initial_problem = Elicitation(signal_beliefs(initial_answers), candidates);
+initial_problem = Elicitation(initial_beliefs, candidates; combinations=signal_combinations());
 initial_report = fit(Xoshiro(42), initial_problem, NelderMead(); maxiters=20000, g_tol=1e-12);
 collect(prior_summary(initial_report))
 collect(target_summary(initial_report, (:beta_normal, 1)))
@@ -133,7 +150,7 @@ Translate the rate into expected signal events for the known exposures and effic
 
 ```@repl guided
 effective_exposure = sum(experiment.exposure .* experiment.efficiency)
-initial_answers.S_q95 * effective_exposure
+initial_problem[:S, :upper].target * effective_exposure
 ```
 
 This gives a target for the 95% prior quantile of the *expected signal yield*, which is
@@ -148,12 +165,11 @@ not a posterior limit extracted from the search data.
 
 ```@repl guided
 revision_reason = "The expert revised the upper rate quantile after reviewing external rate knowledge and its expected-yield implication.";
-revised_answers = merge(initial_answers, (S_q95=3.5,))
-revised_problem = Elicitation(signal_beliefs(revised_answers), candidates);
+revised_problem = replace(initial_problem, :S => Approximate(:upper, Quantile(0.95), 3.5; scale=1.0));
 revised_report = fit(Xoshiro(42), revised_problem, NelderMead(); maxiters=20000, g_tol=1e-12);
 collect(prior_summary(revised_report))
 collect(target_summary(revised_report, (:beta_normal, 1)))
-(original=initial_answers, revised=revised_answers)
+(original=initial_problem[:S, :upper].target, revised=revised_problem[:S, :upper].target)
 ```
 
 Review all six marginal priors under the revision:
@@ -261,5 +277,5 @@ the observed total. These are prior predictions, not posterior fits or hard-boun
 The likelihood uses individual energies. Plot bins and display limits do not select events.
 Do not reuse these search observations as independent prior-elicitation information.
 
-The programmatic workflow replays the final answers, fitting settings, and explicit choice.
+The programmatic workflow replays the final beliefs, fitting settings, and explicit choice.
 Keep the questions, revisions, family assumptions, seeds, and environment with that script.

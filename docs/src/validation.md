@@ -18,6 +18,9 @@ tolerance. An approximate target records a discrepancy, not a pass/fail requirem
 `Mean()` and `Std()` require those moments to exist. `Statistic(f; label)` supplies an
 analytic statistic of a measure, including properties of a joint prior.
 
+The [input guide](@ref input-guide) covers named parameter groups, joint and derived
+quantities, array targets, and standard family descriptors.
+
 ## Fit without hiding preferences
 
 Each `Candidate` supplies a measure builder, parameter starts, and optional parameter bounds.
@@ -27,7 +30,9 @@ with its error. Successful numerical fits retain the solver result and its retur
 Scalar optimization minimizes the sum of squared, scale-normalized target discrepancies,
 weighted by importance. Weights are divided by their maximum first. Multiplying all weights
 by a positive constant therefore leaves the objective unchanged. Zero-weight targets are
-not evaluated. Multiple targets require explicit importance weights for optimization.
+not fitted. Importance defaults to one per belief. Array beliefs use the average squared
+scaled error over their supplied free entries. Splitting one array belief into several
+scalar beliefs changes the weighting unless importance is redistributed explicitly.
 
 Hard beliefs become constraints. Choose a solver that supports them, such as `IPNewton()`
 from OptimizationOptimJL. The default AD choice is `Optimization.NoAD()`; pass a supported
@@ -39,7 +44,9 @@ It retains Pareto dominance, ties, tradeoffs, and unresolved pairs. Importance w
 collapse these comparisons into one score. Satisfying a hard requirement by a larger margin
 does not make a candidate preferable.
 
-The returned fields identify retained results by `(candidate_id, start_index)`:
+Ungrouped and combined results use `(candidate_id, start_index)`. Marginal results use
+`(target, candidate_id, start_index)`. `select(report, target, (candidate_id, start_index); ...)`
+provides a convenient marginal lookup.
 
 | Field          | Contents                                                          |
 |:-------------- |:----------------------------------------------------------------- |
@@ -71,7 +78,11 @@ check = only(only(validation.checks))
 ```
 
 The error budget is divided across all hard checks in this report. The bounds require a valid
-independent sampler. Monte Carlo validation currently supports `Probability` statistics.
+independent sampler. The `sampling=MonteCarlo(n)` option keeps analytic evaluators where
+available and samples remaining quantities using one shared joint batch per candidate.
+Event probabilities use Hoeffding bounds, and quantiles use DKW enclosures. Sampled means
+and dispersion statistics report estimated intervals, which cannot certify hard constraints.
+`estimate.n` records the draw count. The report and validation retain their sampling seeds.
 Repeated adaptive validation needs a separate error-budget policy. The caller owns the seeds.
 
 An enclosure wholly inside a hard requirement satisfies it. A disjoint enclosure violates it.
@@ -87,3 +98,8 @@ targets, so review their achieved values yourself. Solver success does not repla
 Use `role=:reference` to retain a result for exploration without declaring acceptance.
 Selection records the role and rationale. `measure(selection)` returns the native measure
 without adding report metadata to the prior.
+
+Marginal acceptance is local. Joint beliefs stay `:pending` until one candidate covers their
+references. Acceptance of a complete joint prior requires those beliefs to be checked too.
+An accepted selection passed to `Independent` retains that exact marginal law. Calling
+`unlock(selection)` restores its fitted family start and retains its hard beliefs.

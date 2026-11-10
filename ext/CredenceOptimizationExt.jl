@@ -10,7 +10,7 @@ using Random: AbstractRNG
 
 Fit every declared candidate start with an Optimization.jl algorithm.
 Hard beliefs become optimizer constraints, and each result retains solver provenance.
-Deterministic algorithms do not consume `rng`. Configure a stochastic algorithm's own
+Analytic fits with deterministic algorithms do not consume `rng`. Configure a stochastic algorithm's own
 RNG explicitly through its supported backend options; this adapter forwards `kwargs`.
 """
 function Credence.fit(
@@ -18,39 +18,93 @@ function Credence.fit(
     problem::Credence.Elicitation,
     algorithm;
     adtype=Optimization.NoAD(),
+    sampling=nothing,
     kwargs...,
 )
     hard = filter(b -> b isa Hard, problem.beliefs)
-    constraints = if isempty(hard)
-        (;)
-    else
-        bounds = map(b -> Credence._bounds(b.relation), hard)
-        (; lcons=first.(bounds), ucons=last.(bounds))
-    end
+    seed = sampling === nothing ? nothing : Credence._sampling_seed(rng)
+    stream() = seed === nothing ? nothing : Credence._sampling_stream(rng, seed)
     results = map(problem.candidates) do candidate
-        objective = (parameters, _) -> Credence._loss(problem, candidate.build(parameters))
-        objective_function = if isempty(hard)
-            Optimization.OptimizationFunction(objective, adtype)
-        else
-            function constraints!(values, parameters, _)
-                prior = candidate.build(parameters)
-                values .= map(b -> evaluate(b.statistic, prior).value, hard)
-                return nothing
-            end
-            Optimization.OptimizationFunction(objective, adtype; cons=constraints!)
-        end
+        objective =
+            (parameters, _) -> Credence._loss(
+                problem,
+                candidate.build(parameters);
+                scope=candidate.scope,
+                sampling,
+                rng=stream(),
+            )
         lower, upper = map((candidate.lower, candidate.upper)) do bound
             isnothing(bound) && return nothing
             collect(bound)
         end
         map(enumerate(candidate.starts)) do (index, start)
             try
+                point = copy(Credence._flatten(start))
+                if isempty(point)
+                    return Credence._result(
+                        candidate,
+                        index,
+                        point,
+                        candidate.build(point),
+                        nothing,
+                    )
+                end
+                initial = Credence._estimates(
+                    hard,
+                    candidate.build(point),
+                    candidate.scope;
+                    sampling,
+                    rng=stream(),
+                )
+                layout =
+                    isempty(hard) ? () :
+                    Tuple(
+                        Iterators.flatten(
+                            map(eachindex(hard)) do i
+                                estimate = initial[i]
+                                estimate === nothing && return ()
+                                estimate isa Credence.EvaluationFailure &&
+                                    throw(estimate.error)
+                                map(
+                                    j -> (i, j),
+                                    Credence._hard_entries(hard[i], estimate.value),
+                                )
+                            end,
+                        ),
+                    )
+                constraints = if isempty(layout)
+                    (;)
+                else
+                    bounds = map(pair -> Credence._entry_bounds(hard[pair[1]], pair[2]), layout)
+                    (; lcons=collect(first.(bounds)), ucons=collect(last.(bounds)))
+                end
+                objective_function = if isempty(layout)
+                    Optimization.OptimizationFunction(objective, adtype)
+                else
+                    function constraints!(values, parameters, _)
+                        estimates = Credence._estimates(
+                            hard,
+                            candidate.build(parameters),
+                            candidate.scope;
+                            sampling,
+                            rng=stream(),
+                        )
+                        for (k, (i, j)) in enumerate(layout)
+                            estimate = estimates[i]
+                            estimate isa Credence.EvaluationFailure &&
+                                throw(estimate.error)
+                            values[k] = Credence._at(estimate.value, j)
+                        end
+                        nothing
+                    end
+                    Optimization.OptimizationFunction(objective, adtype; cons=constraints!)
+                end
                 optimization_problem = Optimization.OptimizationProblem(
                     objective_function,
-                    collect(start);
+                    point;
                     lb=lower,
                     ub=upper,
-                    map(collect, constraints)...,
+                    constraints...,
                 )
                 solution =
                     Optimization.solve(optimization_problem, algorithm; kwargs...)
@@ -68,7 +122,7 @@ function Credence.fit(
             end
         end
     end
-    return Credence.FitReport(problem, Tuple(Iterators.flatten(results)))
+    return Credence.FitReport(problem, Tuple(Iterators.flatten(results)), sampling, seed)
 end
 
 end

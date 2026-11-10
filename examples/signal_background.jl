@@ -14,15 +14,7 @@
 
 using Credence, MeasureBase
 using Distributions:
-    Beta,
-    Exponential,
-    LocationScale,
-    LogNormal,
-    MixtureModel,
-    Normal,
-    Poisson,
-    logpdf,
-    truncated
+    Beta, Exponential, LocationScale, LogNormal, MixtureModel, Normal, Poisson, logpdf
 
 const experiment =
     (exposure=(1.8, 1.5, 1.1, 0.8, 0.5), efficiency=(0.52, 0.61, 0.72, 0.81, 0.90))
@@ -112,86 +104,71 @@ nothing # hide
 
 scaled_beta(bounds, a, b) =
     LocationScale(first(bounds), last(bounds) - first(bounds), Beta(exp(a), exp(b)))
-bounded_lognormal(bounds, m, s) = truncated(LogNormal(m, exp(s)), bounds...)
 
-function joint_hyperprior(p, positive_law, location_law)
-    fields = (:S, :width, :sigma_B, :m_B, :lam)
-    laws = ntuple(length(fields)) do i
-        bounds = getproperty(prior_bounds, fields[i])
-        asmeasure(positive_law(bounds, p[2i-1], p[2i]))
-    end
-    positive = NamedTuple{fields}(laws)
-    return productmeasure((; positive..., mu=asmeasure(location_law(p[end]))))
-end
-
-# Starts contain two parameters per positive quantity in the order above, followed
-# by the location shape parameter. They guide the solver, rather than adding judgments.
+# Standard descriptors own their parameter transforms and starts. The location Beta
+# uses the custom form to impose symmetry explicitly through one shared shape parameter.
 
 function signal_candidates()
-    beta_start = log.([1.2, 5.0, 6.6, 11.55, 3.83, 7.67, 6.07, 6.93, 6.82, 8.06, 0.6])
-    lognormal_start = [
-        log(1.2),
-        log(0.7),
-        log(1.58),
-        log(0.16),
-        log(0.39),
-        log(0.25),
-        log(6.7),
-        log(0.28),
-        log(53.0),
-        log(0.27),
-        log(12.0),
-    ]
     return (
-        Candidate(
-            :beta_normal,
-            p -> joint_hyperprior(
-                p,
-                scaled_beta,
-                s -> truncated(Normal(location_center, exp(s)), location_bounds...),
-            ),
-            (beta_start, beta_start .+ 0.1),
+        :S => (
+            :beta => ScaledBetaFamily(prior_bounds.S...),
+            :lognormal => TruncatedFamily(LogNormal, prior_bounds.S...),
         ),
-        Candidate(
-            :lognormal_beta,
-            p -> joint_hyperprior(
-                p,
-                bounded_lognormal,
-                s -> scaled_beta(location_bounds, s, s),
+        :width => (
+            :beta => ScaledBetaFamily(prior_bounds.width...),
+            :lognormal => TruncatedFamily(LogNormal, prior_bounds.width...),
+        ),
+        :sigma_B => (
+            :beta => ScaledBetaFamily(prior_bounds.sigma_B...),
+            :lognormal => TruncatedFamily(LogNormal, prior_bounds.sigma_B...),
+        ),
+        :m_B => (
+            :beta => ScaledBetaFamily(prior_bounds.m_B...),
+            :lognormal => TruncatedFamily(LogNormal, prior_bounds.m_B...),
+        ),
+        :lam => (
+            :beta => ScaledBetaFamily(prior_bounds.lam...),
+            :lognormal => TruncatedFamily(LogNormal, prior_bounds.lam...),
+        ),
+        :mu => (
+            :normal => TruncatedFamily(
+                NormalFamily(location=location_center),
+                location_bounds...,
             ),
-            (lognormal_start, lognormal_start .+ 0.1),
+            Candidate(
+                :beta,
+                p -> asmeasure(scaled_beta(location_bounds, p.log_shape, p.log_shape)),
+                ((log_shape=log(12.0),), (log_shape=log(8.0),)),
+            ),
+        ),
+    )
+end
+
+function signal_combinations()
+    return (
+        :beta_normal => Independent(
+            :S => :beta,
+            :width => :beta,
+            :sigma_B => :beta,
+            :m_B => :beta,
+            :lam => :beta,
+            :mu => :normal,
+        ),
+        :lognormal_beta => Independent(
+            :S => :lognormal,
+            :width => :lognormal,
+            :sigma_B => :lognormal,
+            :m_B => :lognormal,
+            :lam => :lognormal,
+            :mu => :beta,
         ),
     )
 end
 nothing # hide
 
-# ## Map expert answers to model quantities
-#
-# Each row declares a marginal statistic, an answer, and a discrepancy scale.
-# Median and upper-quantile targets summarize external calibration knowledge.
-# These scales and equal importance weights are explicit fitting preferences.
-# `S_q95` is an approximate prior quantile target, not a posterior upper limit.
-
-function signal_beliefs(answers)
-    specifications = (
-        (:S_median, :S, Quantile(0.5), 1.0),
-        (:S_q95, :S, Quantile(0.95), 1.0),
-        (:mu_probability, :mu, Probability(location_interval...), 0.1),
-        (:width_median, :width, Quantile(0.5), 0.25),
-        (:width_q95, :width, Quantile(0.95), 0.25),
-        (:sigma_B_median, :sigma_B, Quantile(0.5), 0.1),
-        (:sigma_B_q95, :sigma_B, Quantile(0.95), 0.1),
-        (:m_B_median, :m_B, Quantile(0.5), 2.0),
-        (:m_B_q95, :m_B, Quantile(0.95), 2.0),
-        (:lam_median, :lam, Quantile(0.5), 15.0),
-        (:lam_q95, :lam, Quantile(0.95), 15.0),
-    )
-    return map(specifications) do (id, field, statistic, scale)
-        marginal =
-            Statistic(p -> evaluate(statistic, getproperty(marginals(p), field)).value)
-        Approximate(id, marginal, getproperty(answers, id); scale, importance=1.0)
-    end
-end
+# These two combinations explicitly declare independent hyperparameters.
+# They avoid silently enumerating every possible mix of marginal families.
+# The selected product remains a native MeasureBase measure.
 
 function target_summary(report, id)
     result = only(filter(r -> r.id == id, report.results))

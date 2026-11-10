@@ -6,6 +6,10 @@ Credence is an initial prototype. It fits scalar and joint prior families to pro
 mean, and standard-deviation beliefs. It keeps candidate alternatives, checks hard requirements,
 and returns an explicitly selected MeasureBase measure.
 
+Name parameter references and attach beliefs directly. Standard family descriptors provide
+fitting starts, while custom builders accept named parameter records. Joint and derived
+quantities own separate belief groups. See the [input guide](docs/src/inputs.md).
+
 Optimization.jl provides optional numerical fitting. Plaice support lets wrapped measures and
 named products enter Wren models as joint priors, preserving dependence and support transforms.
 

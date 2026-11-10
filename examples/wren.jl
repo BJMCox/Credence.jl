@@ -17,7 +17,7 @@
 #
 using Credence
 using MeasureBase: MeasureBase
-using Distributions: Normal, MvNormal, LogNormal, mean
+using Distributions: Normal, MvNormal, LogNormal
 using Plaice
 using PDMats
 using Optimization, OptimizationOptimJL
@@ -29,39 +29,20 @@ using Random: Xoshiro
 covariance = [1.0 0.4; 0.4 0.8]
 function build_prior(p)
     MeasureBase.productmeasure((
-        beta=MeasureBase.asmeasure(MvNormal(p[1:2], covariance)),
-        sigma=MeasureBase.asmeasure(LogNormal(p[3], 0.4)),
+        beta=MeasureBase.asmeasure(MvNormal(p.beta, covariance)),
+        sigma=MeasureBase.asmeasure(LogNormal(p.log_sigma, 0.4)),
     ))
 end
-candidate = Candidate(:joint, build_prior, [0.0, 0.0, 0.0])
+candidate = Candidate(:joint, build_prior, ((beta=zeros(2), log_sigma=0.0),))
 
 # ## Fit the expert's targets
 #
-# Keep the coefficient covariance fixed. Fit their means and the log of the scale's median.
-# A `Statistic` callback reads each property from the native product measure.
+# Keep the coefficient covariance fixed. Fit their means and the scale's median.
+# Parameter names associate each belief with its quantity in the native product measure.
 
 beliefs = (
-    Approximate(
-        :first_coefficient,
-        Statistic(p -> mean(MeasureBase.marginals(p).beta)[1]),
-        0.2;
-        scale=1.0,
-        importance=1.0,
-    ),
-    Approximate(
-        :second_coefficient,
-        Statistic(p -> mean(MeasureBase.marginals(p).beta)[2]),
-        -0.1;
-        scale=1.0,
-        importance=1.0,
-    ),
-    Approximate(
-        :log_scale,
-        Statistic(p -> log(evaluate(Quantile(0.5), MeasureBase.marginals(p).sigma).value)),
-        -0.3;
-        scale=1.0,
-        importance=1.0,
-    ),
+    :beta => (Approximate(:mean, Mean(), [0.2, -0.1]; scale=1.0),),
+    :sigma => (Approximate(:median, Quantile(0.5), exp(-0.3); scale=1.0),),
 )
 problem = Elicitation(beliefs, [candidate])
 report = fit(Xoshiro(1001), problem, NelderMead(); maxiters=3000, g_tol=1e-14)

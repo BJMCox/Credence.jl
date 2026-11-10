@@ -32,20 +32,30 @@ nothing # hide
 # Each positive quantity has a median and a 95% upper quantile. The location has 90%
 # probability between 124 and 126 keV. Rates use events/year and energy quantities use keV.
 
-answers = (
-    S_median=1.2,
-    S_q95=3.5,
-    mu_probability=0.9,
-    width_median=1.6,
-    width_q95=2.1,
-    sigma_B_median=0.4,
-    sigma_B_q95=0.6,
-    m_B_median=7.0,
-    m_B_q95=10.5,
-    lam_median=55.0,
-    lam_q95=80.0,
+beliefs = (
+    :S => (
+        Approximate(:median, Quantile(0.5), 1.2; scale=1.0),
+        Approximate(:upper, Quantile(0.95), 3.5; scale=1.0),
+    ),
+    :mu => (Approximate(:central, Probability(location_interval...), 0.9; scale=0.1),),
+    :width => (
+        Approximate(:median, Quantile(0.5), 1.6; scale=0.25),
+        Approximate(:upper, Quantile(0.95), 2.1; scale=0.25),
+    ),
+    :sigma_B => (
+        Approximate(:median, Quantile(0.5), 0.4; scale=0.1),
+        Approximate(:upper, Quantile(0.95), 0.6; scale=0.1),
+    ),
+    :m_B => (
+        Approximate(:median, Quantile(0.5), 7.0; scale=2.0),
+        Approximate(:upper, Quantile(0.95), 10.5; scale=2.0),
+    ),
+    :lam => (
+        Approximate(:median, Quantile(0.5), 55.0; scale=15.0),
+        Approximate(:upper, Quantile(0.95), 80.0; scale=15.0),
+    ),
 )
-problem = Elicitation(signal_beliefs(answers), signal_candidates())
+problem = Elicitation(beliefs, signal_candidates(); combinations=signal_combinations())
 nothing # hide
 
 # ## Fit and compare candidate hyperpriors

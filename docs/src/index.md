@@ -22,18 +22,19 @@ which use Pkg's source pins for the development MeasureBase and Wren APIs.
 
 ## Check a belief
 
-Suppose the prior's median should lie between -0.1 and 0.1. Compare a standard Normal
-and a standard Exponential distribution at their declared parameter points:
+Suppose `x` has a prior median between -0.1 and 0.1. Compare Normal and LogNormal
+families using their declared starts:
 
 ```@example start
 using Credence, MeasureBase, Random
+import Distributions
 
-belief = Hard(:median, Quantile(0.5), Between(-0.1, 0.1))
-candidates = (
-    Candidate(:normal, _ -> StdNormal(), [0.0]),
-    Candidate(:exponential, _ -> StdExponential(), [0.0]),
-)
-problem = Elicitation((belief,), candidates)
+beliefs = (:x => (Hard(:median, Quantile(0.5), Between(-0.1, 0.1)),),)
+candidates = (:x => (
+    :normal => NormalFamily(location=0.0),
+    :lognormal => LogNormalFamily(location=0.0),
+),)
+problem = Elicitation(beliefs, candidates)
 report = fit(Xoshiro(1), problem)
 validation = validate(Xoshiro(2), report)
 
@@ -44,7 +45,7 @@ end
 ```
 
 `fit(rng, problem)` evaluates the supplied points. It does not optimize them. The Normal
-median satisfies the requirement. The Exponential median does not.
+median satisfies the requirement. The LogNormal median does not.
 
 ## Select and use a prior
 
@@ -53,6 +54,7 @@ Selection records your rationale and retains the validation that supports accept
 ```@example start
 selection = select(
     report,
+    :x,
     (:normal, 1);
     validation,
     rationale="The median satisfies the expert's stated range.",
@@ -84,5 +86,5 @@ coefficient dependence through Plaice, then samples a posterior with NUTS.
 targets, numerical evidence, and acceptance. The [API reference](@ref api-reference)
 lists the available constructors and operations.
 
-Predictive fitting, formula macros, tilting, marginal locks, judgment-uncertainty propagation,
+Predictive fitting, formula macros, tilting, judgment-uncertainty propagation,
 portable persistence, interactive controls, and FlatPPL export remain planned.

@@ -43,7 +43,8 @@ makedocs(;
             "Guided REPL session" => "tutorials/guided.md",
             "A joint prior in Wren" => "tutorials/wren.md",
         ],
-        "Guide" => ["Beliefs and validation" => "validation.md"],
+        "Guide" =>
+            ["Named inputs" => "inputs.md", "Beliefs and validation" => "validation.md"],
         "Reference" => "api.md",
     ],
     plugins=[CodeBlocks()],

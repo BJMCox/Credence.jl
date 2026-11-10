@@ -3,25 +3,36 @@
 
 A MeasureBase family builder with explicit starts and optional parameter bounds.
 """
-struct Candidate{I,F,S,L,U}
+struct Candidate{I,F,S,L,U,T,B}
     id::I
     build::F
     starts::S
     lower::L
     upper::U
+    scope::T
+    requirements::B
 end
-function Candidate(id, build, starts; lower=nothing, upper=nothing)
+
+function Candidate(
+    id,
+    build,
+    starts;
+    lower=nothing,
+    upper=nothing,
+    scope=nothing,
+    requirements=(),
+)
     points = if starts isa AbstractVector{<:Number}
         (Tuple(starts),)
     else
-        Tuple(Tuple(p) for p in starts)
+        Tuple(p isa NamedTuple ? p : Tuple(p) for p in starts)
     end
     isempty(points) && throw(ArgumentError("at least one parameter start is required"))
-    n = length(first(points))
-    all(p -> length(p) == n, points) ||
+    n = length(_flatten(first(points)))
+    all(p -> _layout(p) == _layout(first(points)), points) ||
         throw(ArgumentError("parameter starts must have equal lengths"))
-    lo = lower === nothing ? nothing : Tuple(lower)
-    hi = upper === nothing ? nothing : Tuple(upper)
+    lo = lower === nothing ? nothing : Tuple(_flatten_bound(lower, first(points)))
+    hi = upper === nothing ? nothing : Tuple(_flatten_bound(upper, first(points)))
     for bound in (lo, hi)
         bound === nothing ||
             length(bound) == n ||
@@ -30,8 +41,70 @@ function Candidate(id, build, starts; lower=nothing, upper=nothing)
     if lo !== nothing && hi !== nothing
         all(lo .<= hi) || throw(ArgumentError("lower parameter bounds exceed upper bounds"))
     end
-    Candidate(id, build, points, lo, hi)
+    builder = first(points) isa NamedTuple ? NamedBuilder(build, first(points)) : build
+    Candidate(id, builder, points, lo, hi, scope, requirements)
 end
+
+_flatten(x::Number) = [x]
+_flatten(x::AbstractArray) = vec(x)
+_flatten(x::Union{Tuple,NamedTuple}) =
+    isempty(x) ? Float64[] : reduce(vcat, map(_flatten, values(x)))
+_flatten_bound(bound, template) = _flatten(bound)
+function _flatten_bound(bound::AbstractArray, template::AbstractArray)
+    axes(bound) == axes(template) ||
+        throw(DimensionMismatch("parameter bound axes must match the starts"))
+    vec(bound)
+end
+_flatten_bound(bound::Number, template::AbstractArray) = fill(bound, length(template))
+function _flatten_bound(bound::NamedTuple, template::NamedTuple)
+    Set(keys(bound)) == Set(keys(template)) ||
+        throw(ArgumentError("parameter bound names must match the starts"))
+    reduce(
+        vcat,
+        map(
+            k -> _flatten_bound(getproperty(bound, k), getproperty(template, k)),
+            keys(template),
+        ),
+    )
+end
+_layout(x::Number) = nothing
+_layout(x::AbstractArray) = axes(x)
+_layout(x::Tuple) = map(_layout, x)
+_layout(x::NamedTuple) = (keys(x), map(_layout, values(x)))
+function _restore(template::Number, values, offset)
+    offset[] += 1
+    values[offset[]]
+end
+function _restore(template::AbstractArray, values, offset)
+    indices = (offset[]+1):(offset[]+length(template))
+    offset[] += length(template)
+    reshape(view(values, indices), size(template))
+end
+_restore(template::NamedTuple, values, offset) =
+    NamedTuple{keys(template)}(map(x -> _restore(x, values, offset), Base.values(template)))
+_restore(template::Tuple, values, offset) = map(x -> _restore(x, values, offset), template)
+struct NamedBuilder{F,T}
+    f::F
+    template::T
+end
+(build::NamedBuilder)(values::AbstractVector) =
+    build.f(_restore(build.template, values, Ref(0)))
+(build::NamedBuilder)(values::NamedTuple) = build.f(values)
+_parameters(candidate, values) = Tuple(values)
+_parameters(candidate::Candidate{I,<:NamedBuilder}, values) where {I} =
+    _restore(candidate.build.template, values, Ref(0))
+_scoped(candidate, target) = Candidate(
+    candidate.id,
+    candidate.build,
+    candidate.starts,
+    candidate.lower,
+    candidate.upper,
+    target,
+    candidate.requirements,
+)
+_resultid(candidate, index) =
+    candidate.scope === nothing || candidate.scope isa Tuple ? (candidate.id, index) :
+    (_targetid(candidate.scope), candidate.id, index)
 
 """
     Elicitation(beliefs, candidates)
@@ -41,14 +114,43 @@ An immutable collection of beliefs and candidate definitions.
 struct Elicitation{B,C}
     beliefs::B
     candidates::C
-    function Elicitation(beliefs, candidates)
-        bs, cs = Tuple(beliefs), Tuple(candidates)
+    function Elicitation(beliefs, candidates; combinations=nothing)
+        rawbeliefs, rawcandidates = Tuple(beliefs), Tuple(candidates)
+        grouped = !isempty(rawbeliefs) && first(rawbeliefs) isa Pair
+        bs = grouped ? _grouped_beliefs(rawbeliefs) : rawbeliefs
+        catalog = !isempty(rawcandidates) && first(rawcandidates) isa Pair
+        cs = catalog ? _grouped_candidates(rawcandidates) : rawcandidates
+        if combinations !== nothing
+            cs = _combinations(cs, combinations)
+        end
+        bs = _inherit_requirements(bs, cs)
+        _check_derived(bs)
         length(unique(b.id for b in bs)) == length(bs) ||
             throw(ArgumentError("belief IDs must be unique"))
-        length(unique(c.id for c in cs)) == length(cs) ||
+        length(unique(_resultid(c, 1) for c in cs)) == length(cs) ||
             throw(ArgumentError("candidate IDs must be unique"))
         new{typeof(bs),typeof(cs)}(bs, cs)
     end
+end
+
+"""`replace(problem, target => belief)` replaces one locally named belief, preserving the original problem."""
+function Base.replace(problem::Elicitation, change::Pair)
+    target = _target(change.first)
+    belief = _bind(target, change.second)
+    found = any(b -> b.id == belief.id, problem.beliefs)
+    found || throw(ArgumentError("no belief with this target and ID exists"))
+    beliefs = map(problem.beliefs) do old
+        if old.id == belief.id
+            return belief
+        end
+        old
+    end
+    Elicitation(beliefs, problem.candidates)
+end
+
+function Base.getindex(problem::Elicitation, target, id)
+    identity = (_targetid(_target(target)), id)
+    only(filter(b -> b.id == identity, problem.beliefs))
 end
 
 """
@@ -77,10 +179,22 @@ end
 
 All retained candidate results for one elicitation problem.
 """
-struct FitReport{P,R}
-    problem::P
-    results::R
+mutable struct FitReport{P,R,S,N}
+    const problem::P
+    const results::R
+    const sampling::S
+    const seed::N
 end
+FitReport(problem, results) = FitReport(problem, results, nothing, nothing)
+
+"""`diagnostics(problem_or_report)` returns preserved input inconsistencies without repairing the targets."""
+function diagnostics(problem::Elicitation)
+    Tuple(
+        (id=b.id, code=code) for b in problem.beliefs if b isa Approximate for
+        code in b.diagnostics
+    )
+end
+diagnostics(report::FitReport) = diagnostics(report.problem)
 
 function _result(candidate, index, parameters, prior, solver)
     if candidate.lower !== nothing
@@ -95,10 +209,17 @@ function _result(candidate, index, parameters, prior, solver)
         throw(ArgumentError("candidate builder must return a MeasureBase measure"))
     isone(MeasureBase.massof(prior)) ||
         throw(ArgumentError("candidate measure must be normalized"))
-    FitResult((candidate.id, index), candidate, Tuple(parameters), prior, solver, nothing)
+    FitResult(
+        _resultid(candidate, index),
+        candidate,
+        _parameters(candidate, parameters),
+        prior,
+        solver,
+        nothing,
+    )
 end
 _failure(candidate, index, error) = FitResult(
-    (candidate.id, index),
+    _resultid(candidate, index),
     candidate,
     candidate.starts[index],
     nothing,
@@ -111,43 +232,49 @@ _failure(candidate, index, error) = FitResult(
 
 Evaluate declared parameter points, or fit through an optional optimizer extension.
 """
-function fit(rng::Union{AbstractRNG,GenContext}, problem::Elicitation; plan=Evaluate())
-    _fit(rng, problem, plan)
+function fit(
+    rng::Union{AbstractRNG,GenContext},
+    problem::Elicitation;
+    plan=Evaluate(),
+    sampling=nothing,
+)
+    _fit(rng, problem, plan; sampling)
 end
-function _fit(rng, problem, ::Evaluate)
+function _fit(rng, problem, ::Evaluate; sampling=nothing)
     results = map(problem.candidates) do candidate
         map(Tuple(enumerate(candidate.starts))) do (index, point)
             try
-                _result(candidate, index, point, candidate.build(collect(point)), nothing)
+                values = copy(_flatten(point))
+                _result(candidate, index, values, candidate.build(values), nothing)
             catch error
                 error isa InterruptException && rethrow()
                 _failure(candidate, index, error)
             end
         end
     end
-    FitReport(problem, Tuple(Iterators.flatten(results)))
+    FitReport(problem, Tuple(Iterators.flatten(results)), sampling, nothing)
 end
 
-function _loss(problem, prior)
+function _loss(problem, prior; scope=nothing, sampling=nothing, rng=nothing)
     soft = filter(b -> b isa Approximate, problem.beliefs)
     isempty(soft) && return 0.0
-    if length(soft) > 1 && any(b -> b.importance === nothing, soft)
-        throw(
-            ArgumentError(
-                "multiple soft targets require explicit importance weights for scalar optimization; compare evaluated points for Pareto ranking",
-            ),
-        )
+    weights = map(soft) do belief
+        weight = something(belief.importance, 1)
+        _applicable(belief.statistic, prior, scope) ? weight : zero(weight)
     end
-    weights = map(b -> something(b.importance, 1), soft)
     maxweight = maximum(weights)
     iszero(maxweight) && return 0.0
-    return sum(
+    estimates = if sampling === nothing
         map(soft, weights) do belief, weight
-            iszero(weight) && return 0.0
-            residual =
-                (evaluate(belief.statistic, prior).value-belief.target) / belief.scale
-            (weight / maxweight) * residual^2
-        end;
-        init=0.0,
-    )
+            iszero(weight) ? nothing : _analytic(belief.statistic, prior, scope)
+        end
+    else
+        _estimates(soft, prior, scope; sampling, rng)
+    end
+    return sum(map(soft, weights, estimates) do belief, weight, estimate
+        iszero(weight) && return 0.0
+        estimate isa EvaluationFailure && throw(estimate.error)
+        discrepancy = _discrepancy(belief, estimate.value)
+        oftype(discrepancy, weight / maxweight) * discrepancy
+    end)
 end
