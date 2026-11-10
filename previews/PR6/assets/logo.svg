@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192" role="img" aria-labelledby="title desc">
+  <title id="title">Credence.jl</title>
+  <desc id="desc">Three leafy bean sprouts with question-mark tips grow from a blue desk drawer in Julia colours.</desc>
+  <path d="M42 114L54 96H138L150 114L141 158H51Z" fill="#9558b2"/>
+  <path d="M50 113L60 103H132L142 113Z" fill="#fff"/>
+  <path d="M64 113C63 101 53 100 53 89M96 113V78M128 113C129 101 139 100 139 89" fill="none" stroke="#389826" stroke-width="7" stroke-linecap="round"/>
+  <path d="M57 102C40 105 34 92 40 86C51 84 60 93 57 102ZM59 104C59 92 72 88 77 94C77 105 66 110 59 104Z" fill="#389826"/>
+  <path d="M96 96C79 96 74 82 80 76C92 76 100 85 96 96ZM96 96C96 82 109 75 116 81C119 93 107 101 96 96Z" fill="#389826"/>
+  <path d="M135 102C152 105 158 92 152 86C141 84 132 93 135 102ZM133 104C133 92 120 88 115 94C115 105 126 110 133 104Z" fill="#389826"/>
+  <path d="M40 48C40 31 67 31 67 47C67 58 53 57 53 67" fill="none" stroke="#389826" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="53" cy="79" r="4.5" fill="#389826"/>
+  <path d="M83 34C83 17 110 17 110 33C110 44 96 43 96 54" fill="none" stroke="#9558b2" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="96" cy="66" r="4.5" fill="#9558b2"/>
+  <path d="M126 48C126 31 153 31 153 47C153 58 139 57 139 67" fill="none" stroke="#cb3c33" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="139" cy="79" r="4.5" fill="#cb3c33"/>
+  <path d="M42 114H150V145Q150 158 137 158H55Q42 158 42 145Z" fill="#4063d8"/>
+  <path d="M80 131H112" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="96" cy="147" r="3" fill="#9558b2"/>
+</svg>
