@@ -4,7 +4,7 @@ using DocumenterCodeBlocks
 using Literate
 
 root = dirname(@__DIR__)
-for name in ("scalar", "wren")
+for name in ("signal_background", "scalar", "wren")
     options = if name == "wren"
         (; codefence="```julia" => "```")
     else
@@ -38,6 +38,7 @@ makedocs(;
     pages=[
         "Getting started" => "index.md",
         "Tutorials" => [
+            "Scientific model" => "tutorials/signal_background.md",
             "Programmatic elicitation" => "tutorials/scalar.md",
             "Guided REPL session" => "tutorials/guided.md",
             "A joint prior in Wren" => "tutorials/wren.md",

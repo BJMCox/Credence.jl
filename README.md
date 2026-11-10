@@ -2,7 +2,7 @@
 
 Expert-guided prior elicitation for Julia.
 
-Credence is an initial prototype. It fits scalar prior families to probability, quantile,
+Credence is an initial prototype. It fits scalar and joint prior families to probability, quantile,
 mean, and standard-deviation beliefs. It keeps candidate alternatives, checks hard requirements,
 and returns an explicitly selected MeasureBase measure.
 
@@ -13,9 +13,11 @@ Start with the [programmatic example](examples/scalar.jl) or the
 [guided Julia REPL session](docs/src/tutorials/guided.md). Both fit, compare, validate,
 and explicitly select a prior. The [documentation](docs/src/index.md) explains the API,
 and the [Wren example](examples/wren.jl) shows model integration.
+The workflows use a [rare-event signal and background model](examples/signal_background.jl)
+with six elicited hyperparameters, detector efficiencies, and five conditional background rates.
 The prototype targets pinned MeasureBase and HeterogeneousComputing development APIs.
 
-Run the scalar fitting example with Julia 1.13:
+Run the programmatic example with Julia 1.13:
 
 ```sh
 julia --project=examples -e 'using Pkg; Pkg.instantiate()'

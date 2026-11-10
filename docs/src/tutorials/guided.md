@@ -1,10 +1,10 @@
-# [Guided elicitation at the Julia REPL](@id guided-tutorial)
+# [Guided elicitation for a rare-event search](@id guided-tutorial)
 
-This session follows one expert from questions to feedback, a revised answer, and an explicit
-choice. It uses the same API and final answers as the [programmatic workflow](@ref scalar-tutorial).
-Run the commands in a Julia REPL. The outputs below come from executing the session.
+This Julia REPL session elicits priors for a weak Gaussian line above an exponential
+background. It follows the [scientific model](@ref rare-event-model) and reaches the same
+final judgments as the [programmatic workflow](@ref scalar-tutorial).
 
-From a Credence checkout, install the example environment and start Julia:
+From a Credence checkout, start the example environment with Julia 1.13 or later:
 
 ```sh
 julia --project=examples -e 'using Pkg; Pkg.instantiate()'
@@ -13,152 +13,176 @@ julia --project=examples
 
 ```@repl guided
 using Credence, MeasureBase, Optimization, OptimizationOptimJL, Random
-using Distributions: Normal, LocationScale, TDist
+include(joinpath(pkgdir(Credence), "examples", "signal_background.jl"));
 include(joinpath(pkgdir(Credence), "examples", "feedback.jl"));
 ```
 
-## Agree on the quantity
+## Agree on quantities and hard bounds
 
-Ask: **What are we uncertain about, and under which conditions?**
+Ask: **Which rate and which energy are we discussing? What can independent knowledge rule out?**
 
-Here the quantity is a sensor's fixed mean offset from a reference at 20°C, in degrees Celsius.
-Zero means no offset. Positive values mean the sensor reads higher on average.
-The prior describes uncertainty about this fixed offset. It does not describe the variation
-of individual readings around that mean.
+| Quantity | Meaning | Illustrative support |
+|:--|:--|:--|
+| `S` | Signal rate before efficiency, in events/year | `[0, 8]` |
+| `mu` | Gaussian line location, in keV | `[122, 128]` |
+| `width` | Gaussian signal width, in keV | `[0.8, 3]` |
+| `sigma_B` | Dimensionless log variation of background rates | `[0.15, 0.9]` |
+| `m_B` | Conditional mean background rate, in events/year | `[0.001, 15]` |
+| `lam` | Exponential background energy scale, in keV | `[0.001, 120]` |
 
-Before collecting answers, check the probability interpretation together. A lower quartile
-places 25% of prior probability at or below that value. It is neither the most likely value
-nor a lower limit on possible offsets.
+The width describes the spread of individual signal energies around `mu`. Its prior
+expresses uncertainty about detector resolution. The prior on `mu` instead describes
+uncertainty about the line location. The bounds represent illustrative external assumptions.
+Every candidate enforces them through its support, independently of solver tolerance.
 
-## Ask about quartiles
+`S ≤ 8` does not bound the realized Poisson count. A 95% prior upper quantile for `S`
+is also a different statement from a hard cap or a posterior upper limit.
 
-Ask: **Below which offset would you place 25% of your probability?**
-The illustrative answer is **-0.5°C**.
+Both location families assume symmetry about 125 keV. Confirm this family assumption
+separately from the probability question below. All six hyperparameters receive elicited
+priors. No background hyperprior remains an implicit default.
 
-Ask: **Below which offset would you place 75% of your probability?**
-The initial answer is **1.5°C**.
+## Ask for probability judgments
 
-Pause if the expert cannot judge either question. Record it as unknown and discuss the
-context. This two-quartile example needs both answers before fitting. A missing answer
-does not mean zero, an interval midpoint, or a uniform prior.
+Ask: **Which signal rate has half your prior probability below it?**
+The illustrative answer is **1.2 events/year**.
 
-```@repl guided
-initial_answers = (q25=-0.5, q75=1.5)
-```
+Ask: **Which signal rate has 95% of your prior probability below it?**
+The initial answer is **5 events/year**.
 
-Read the interpretation back: **You assign 25% probability to an offset at or below -0.5°C,
-and 75% to an offset at or below 1.5°C. Is that what you mean?**
+Ask: **What probability do you assign to the line lying between 124 and 126 keV?**
+The answer is **90%**.
 
-Turn confirmed answers into beliefs. Equal importance is an explicit analyst choice here.
-The discrepancy scale is one degree Celsius. These are approximate targets, not hard bounds.
+For each remaining positive quantity, ask the same median and 95% upper-quantile questions.
+These judgments could come from calibration studies or previous detector runs.
+For `sigma_B`, discuss variation on the log-rate scale before asking for its uncertainty.
+Conditional background rates have log standard deviation `sigma_B`, not standard deviation `sigma_B`.
 
-```@repl guided
-function beliefs_for(answers)
-    return (
-        Approximate(
-            :lower_quartile,
-            Quantile(0.25),
-            answers.q25;
-            scale=1.0,
-            importance=1.0,
-        ),
-        Approximate(
-            :upper_quartile,
-            Quantile(0.75),
-            answers.q75;
-            scale=1.0,
-            importance=1.0,
-        ),
-    )
-end;
-```
+| Quantity | Median | 95% upper quantile | Discrepancy scale |
+|:--|--:|--:|--:|
+| Signal width, keV | 1.6 | 2.1 | 0.25 keV |
+| Background log variation | 0.4 | 0.6 | 0.1 |
+| Mean background rate, events/year | 7 | 10.5 | 2 events/year |
+| Background energy scale, keV | 55 | 80 | 15 keV |
 
-## Present alternative families
-
-Compare a Normal family and a Student-t family. Five degrees of freedom is a family
-assumption agreed for this demonstration. Two quartiles do not determine tail behavior.
-Both families allow positive and negative offsets. A log scale keeps proposed scales positive.
+Pause if the expert cannot judge. An unanswered question does not become zero or a uniform
+prior. These 11 illustrative answers concern external knowledge, not the search events.
 
 ```@repl guided
-candidates = (
-    Candidate(
-        :normal,
-        p -> AbstractMeasure(Normal(p[1], exp(p[2]))),
-        ([0.0, 0.0], [1.0, -0.5]),
-    ),
-    Candidate(
-        :student_t,
-        p -> AbstractMeasure(LocationScale(p[1], exp(p[2]), TDist(5))),
-        ([0.0, 0.0], [1.0, -0.5]),
-    ),
-);
-initial_problem = Elicitation(beliefs_for(initial_answers), candidates);
-initial_report = fit(Xoshiro(42), initial_problem, NelderMead(); maxiters=2000, g_tol=1e-12);
-[(result.id, result.error) for result in initial_report.results]
+initial_answers = (
+    S_median=1.2, S_q95=5.0, mu_probability=0.9,
+    width_median=1.6, width_q95=2.1,
+    sigma_B_median=0.4, sigma_B_q95=0.6,
+    m_B_median=7.0, m_B_q95=10.5,
+    lam_median=55.0, lam_q95=80.0,
+)
 ```
 
-Each start retains its own result or error. Inspect errors before accessing a result's measure.
-These starts succeed. Their solver return codes remain available as `result.solver.retcode`.
+Read the probability statements back to the expert before fitting. `signal_beliefs` maps
+them to marginal statistics of the joint hyperprior. Its full constructors appear in the
+[model definition](@ref rare-event-model). All 11 are approximate targets. The scales
+and equal importance weights are explicit fitting preferences.
 
-## Discuss feedback beyond the questions
+## Compare candidate shapes
 
-Ask: **Do these curves represent your uncertainty? What probability do they assign to an
-offset above 4°C, which we have not asked about?**
+The first family uses scaled Beta priors for all five positive quantities and a truncated
+Normal location prior. The second uses truncated LogNormal priors and a symmetric scaled Beta location.
+Both have the same hard supports. Product hyperparameters are independent in these families.
+The dataset-specific backgrounds remain conditional on shared `m_B` and `sigma_B`.
+
+```@repl guided
+candidates = signal_candidates();
+initial_problem = Elicitation(signal_beliefs(initial_answers), candidates);
+initial_report = fit(Xoshiro(42), initial_problem, NelderMead(); maxiters=20000, g_tol=1e-12);
+collect(prior_summary(initial_report))
+collect(target_summary(initial_report, (:beta_normal, 1)))
+```
+
+The summary retains every start, its largest scaled residual, and its solver code or error.
+`target_summary` shows all 11 achieved targets for any retained result ID.
+Solver success is distinct from validation. Small residual differences do not select a family.
+
+## Discuss implications before revising
+
+Ask: **How much probability do these priors place near the hard rate cap? Does that agree
+with your external knowledge?**
 
 ```@repl guided
 [
-    (result.id, round(evaluate(Probability(4, Inf), result.measure).value; digits=4)) for
+    (result.id, evaluate(Probability(6.0, 8.0), marginals(result.measure).S).value) for
     result in initial_report.results
 ]
-initial_figure = feedback(initial_report);
 mkpath("elicitation-output");
-save("elicitation-output/initial-prior.svg", initial_figure);
+initial_strength = feedback(
+    initial_report,
+    :S,
+    strength_bounds;
+    xlabel="Signal rate (events/year)",
+    levels=(0.5, 0.95),
+);
+save("elicitation-output/initial-signal-prior.svg", initial_strength);
 ```
 
-![Initial prior density and cumulative probability for each retained fit.](elicitation-output/initial-prior.svg)
+![Initial signal-rate prior densities and cumulative probabilities.](elicitation-output/initial-signal-prior.svg)
 
-The quartiles fit closely in both families, while their tails differ. The dashed lines in
-the probability plot mark 25% and 75%. Every curve is one retained fit, not an envelope,
-credible band, or mixture of candidate families. The displayed x-range is not a support bound.
-The SVG file in `elicitation-output` also lets you review the plot outside Julia.
+The dashed CDF levels mark the elicited 50% and 95% quantiles. Each curve is one retained
+fit, not a mixture weight or a credible band. Density endpoints are omitted because a
+continuous Beta density can diverge at a boundary without creating a point mass there.
 
-Keep feedback separate from judgments. Showing a tail probability does not create a new
-belief. Ask whether the expert wants to affirm, revise, or leave an answer unresolved.
-If the expert supplies a new hard probability requirement, record it explicitly and use
-a solver that supports constraints, as described in [Beliefs and validation](@ref validation-guide).
-
-## Revise an answer without losing the first fit
-
-Suppose the expert reconsiders the upper quartile using their calibration experience and
-changes it to **1.0°C**. Record the reason. This is a revised judgment, not a new observation.
+Translate the rate into expected signal events for the known exposures and efficiencies:
 
 ```@repl guided
-revision_reason = "After reviewing large offsets, the expert revised the upper quartile from calibration experience.";
-revised_answers = merge(initial_answers, (q75=1.0,))
-revised_problem = Elicitation(beliefs_for(revised_answers), candidates);
-revised_report = fit(Xoshiro(42), revised_problem, NelderMead(); maxiters=2000, g_tol=1e-12);
-[(result.id, result.error) for result in revised_report.results]
+effective_exposure = sum(experiment.exposure .* experiment.efficiency)
+initial_answers.S_q95 * effective_exposure
 ```
 
-The original answers and report remain available. Review the new feedback rather than
-carrying the earlier assessment forward automatically:
+This gives a target for the 95% prior quantile of the *expected signal yield*, which is
+linear in `S`. It does not specify a quantile of the realized signal count or total count.
+No search observations have entered this feedback.
+
+## Revise the judgment and retain the original
+
+Suppose the expert reviews their external rate assessment and changes the 95% rate
+quantile to **3.5 events/year**. Record the reason. This is a revised prior judgment,
+not a posterior limit extracted from the search data.
 
 ```@repl guided
+revision_reason = "The expert revised the upper rate quantile after reviewing external rate knowledge and its expected-yield implication.";
+revised_answers = merge(initial_answers, (S_q95=3.5,))
+revised_problem = Elicitation(signal_beliefs(revised_answers), candidates);
+revised_report = fit(Xoshiro(42), revised_problem, NelderMead(); maxiters=20000, g_tol=1e-12);
+collect(prior_summary(revised_report))
+collect(target_summary(revised_report, (:beta_normal, 1)))
 (original=initial_answers, revised=revised_answers)
-revised_figure = feedback(revised_report);
-save("elicitation-output/revised-prior.svg", revised_figure);
+```
+
+Review all six marginal priors under the revision:
+
+```@repl guided
+revised_strength = feedback(
+    revised_report,
+    :S,
+    strength_bounds;
+    xlabel="Signal rate (events/year)",
+    levels=(0.5, 0.95),
+);
+save("elicitation-output/revised-signal-prior.svg", revised_strength);
+marginal_figure = hyperprior_feedback(revised_report);
+save("elicitation-output/hyperpriors.svg", marginal_figure);
 comparison = compare(revised_report);
 comparison.incomparable
 ```
 
-![Revised prior density and cumulative probability for each retained fit.](elicitation-output/revised-prior.svg)
+![Revised signal-rate prior densities and cumulative probabilities.](elicitation-output/revised-signal-prior.svg)
+![Cumulative probabilities for all six elicited hyperparameters.](elicitation-output/hyperpriors.svg)
 
-`compare` preserves tradeoffs for each target. Small solver residual differences do not
-identify the best prior family. The expert still needs to assess the assumptions and tails.
+Symmetry makes 90% central location probability correspond to CDF levels 5% and 95%
+at 124 and 126 keV. The location-support endpoints remain 122 and 128 keV.
+Feedback does not add a judgment unless the expert explicitly adopts it.
 
-## Validate the current report
+## Validate the current report and select
 
-Validation belongs to a specific report. A check of the initial report is not a check of the revision:
+Validation belongs to its report. An assessment of the initial fit cannot accept the revision:
 
 ```@repl guided
 initial_validation = validate(Xoshiro(43), initial_report);
@@ -167,52 +191,75 @@ validation = validate(Xoshiro(43), revised_report);
 [[check.status for check in row] for row in validation.checks]
 ```
 
-These checks are `:target`: approximate targets do not provide pass/fail tolerances.
-Inspect the achieved values and solver return codes before choosing:
+These checks are `:target`, because the judgments are approximate. Review the achieved
+values and solver codes above. Physical support bounds come from the candidate laws.
+Approximate quantile targets can differ slightly from their requested values numerically.
 
-```@repl guided
-[
-    (
-        id=result.id,
-        quartiles=map(
-            p -> round(evaluate(Quantile(p), result.measure).value; digits=3),
-            (0.25, 0.75),
-        ),
-        upper_tail=round(evaluate(Probability(4, Inf), result.measure).value; digits=4),
-        solver=string(result.solver.retcode),
-    ) for result in revised_report.results
-]
-```
+Ask: **Which candidate do you accept, and why?**
 
-Rounding changes only the display. Use `Hard` beliefs when a requirement must hold.
-An accepted selection requires this report's validation and satisfaction of all hard requirements.
-
-## Make a choice and use the prior
-
-Ask: **Which retained prior do you accept, and why?**
-
-For this demonstration, the expert accepts the first Normal fit after reviewing both families.
-The ID and rationale are supplied decisions. Neither comes from a ranking rule.
+For this demonstration, the expert chooses the first Beta/Normal fit. The decision and
+rationale are inputs, rather than consequences of a ranking rule.
 
 ```@repl guided
 selection = select(
     revised_report,
-    (:normal, 1);
+    (:beta_normal, 1);
     validation,
-    rationale="The expert accepts the Normal family after reviewing both families and their tails.",
+    rationale="The expert accepts the bounded Beta hyperparameters and calibrated Normal location after reviewing both alternatives.",
 );
 prior = measure(selection);
-rand(Xoshiro(44), prior^5)
+rng = Xoshiro(44);
+hyperparameters = rand(rng, prior)
+parameters = background_parameters(rng, hyperparameters);
+(S=parameters.S, mu=parameters.mu, width=parameters.width, B=parameters.B)
 ```
 
-Use `role=:reference` instead when retaining a candidate for discussion without accepting it.
-If a judgment changes again, create a new problem, review its feedback, validate its report,
-and make a new selection. Keep the old records under their original answers.
+The selected measure is a hyperprior. Drawing `B` conditionally completes the hierarchical
+prior and preserves its shared background-rate structure. Use `role=:reference` when
+retaining a fit for discussion without accepting it. A new judgment needs a new problem,
+fresh validation, and a new explicit decision.
 
-The programmatic example starts from these final answers, uses the same starts and fitting
-settings, and records this same decision. Keep the questions, answers, revision reason,
-script, seeds, and pinned environment together for replay. Portable report files and a
-browser-based elicitation interface remain future work.
+## Inspect the joint prior
 
-The selected object is a native MeasureBase measure. The [Wren tutorial](@ref wren-tutorial)
-shows how to use a selected joint measure in a model.
+This parameter point has six hyperparameters and five conditional background rates.
+Draw paired values from the selected prior to inspect their joint meaning:
+
+```@repl guided
+joint_figure = joint_feedback(Xoshiro(46), prior);
+save("elicitation-output/joint-prior.svg", joint_figure);
+```
+
+![Joint signal and hierarchical background prior draws.](elicitation-output/joint-prior.svg)
+
+The left panel shows signal rate and location, coloured by signal width. Their independence
+is an explicit family assumption, not a result inferred from marginal judgments.
+The right panel shows background rates from the same joint draws. Shared uncertain
+hyperparameters make these rates dependent. In particular, their covariance equals the
+prior variance of `m_B`, since each conditional mean equals `m_B`.
+
+## Use the scientific likelihood
+
+Only after the prior exercise do we generate a fresh synthetic search dataset. The truth
+values below are a reproducibility device. They were not used to fit or revise the prior.
+The exposures, efficiencies, and generated observations differ from the original example.
+
+```@repl guided
+truth = (S=0.8, mu=125.4, width=1.6, sigma_B=0.35, m_B=7.0, lam=55.0);
+truth_parameters = background_parameters(Xoshiro(2026), truth);
+data = simulate_spectrum(Xoshiro(2027), truth_parameters);
+(counts=data.counts, total=sum(data.counts), energy_rows=length(data.energy))
+spectrum_loglikelihood(parameters, data)
+predictive_figure = spectrum_feedback(Xoshiro(45), prior, data; ndraws=200);
+save("elicitation-output/prior-predictive.svg", predictive_figure);
+```
+
+![Prior expected spectra and predictive counts compared with synthetic observations.](elicitation-output/prior-predictive.svg)
+
+Blue curves show expected binned spectra from prior draws. Black points show synthetic
+observed counts. The right panel samples total counts from the Poisson model and marks
+the observed total. These are prior predictions, not posterior fits or hard-bound certificates.
+The likelihood uses individual energies. Plot bins and display limits do not select events.
+Do not reuse these search observations as independent prior-elicitation information.
+
+The programmatic workflow replays the final answers, fitting settings, and explicit choice.
+Keep the questions, revisions, family assumptions, seeds, and environment with that script.

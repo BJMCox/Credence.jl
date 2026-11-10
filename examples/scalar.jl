@@ -1,143 +1,165 @@
-# # [Programmatic elicitation](@id scalar-tutorial)
+# # [Programmatic signal-prior elicitation](@id scalar-tutorial)
 #
-# The unknown quantity is a sensor's fixed mean offset from a reference at 20°C,
-# in degrees Celsius. The prior describes uncertainty about that offset, not reading noise.
-# An expert supplies quartiles, then an analyst records a family choice after reviewing feedback.
-# This script replays those inputs. The [guided REPL session](@ref guided-tutorial)
-# shows how the expert arrives at the same final answers through discussion and revision.
+# Fit priors for a weak Gaussian line above an exponential background in five detectors.
+# The [model definition](@ref rare-event-model) contains the full Julia implementation,
+# units, support bounds, and hierarchical background model.
+# The [guided REPL session](@ref guided-tutorial) arrives at these same final judgments.
 #
-# Run this file from the package directory with Julia 1.13 or later:
+# Run from the package directory with Julia 1.13 or later:
 #
 # ```sh
 # julia --project=examples -e 'using Pkg; Pkg.instantiate()'
 # julia --project=examples examples/scalar.jl
 # ```
 #
-# The script writes its plot to `elicitation-output/prior-feedback.svg` in the working directory.
-#
-# ## Define the families
-#
-using Credence
-using Distributions: LocationScale, Normal, TDist
-using MeasureBase
-using Optimization
-using OptimizationOptimJL
-using Random: Xoshiro
+# Plots are written to `elicitation-output` in the working directory.
+
+using Credence, MeasureBase, Optimization, OptimizationOptimJL, Random
+include(joinpath(pkgdir(Credence), "examples", "signal_background.jl"))
 include(joinpath(pkgdir(Credence), "examples", "feedback.jl"))
 nothing # hide
 
-# Work in log scale so every proposed scale remains positive.
-candidates = (
-    Candidate(
-        :normal,
-        p -> AbstractMeasure(Normal(p[1], exp(p[2]))),
-        ([0.0, 0.0], [1.0, -0.5]),
-    ),
-    Candidate(
-        :student_t,
-        p -> AbstractMeasure(LocationScale(p[1], exp(p[2]), TDist(5))),
-        ([0.0, 0.0], [1.0, -0.5]),
-    ),
-)
-nothing # hide
-
-# ## State the targets
+# ## Record the external judgments
 #
-# These recorded answers concern the unknown offset: 25% prior probability lies at or below
-# `q25`, and 75% lies at or below `q75`. They are illustrative judgments, not neutral defaults.
-# Do not substitute a number when an expert cannot judge.
-# The discrepancy scale is one degree Celsius for each quartile. Equal importance expresses
-# an explicit preference for treating those two discrepancies equally during fitting.
-# Five degrees of freedom is a family choice, not a quantity learned from two quartiles.
-
-answers = (q25=-0.5, q75=1.0)
-beliefs = (
-    Approximate(:lower_quartile, Quantile(0.25), answers.q25; scale=1.0, importance=1.0),
-    Approximate(:upper_quartile, Quantile(0.75), answers.q75; scale=1.0, importance=1.0),
-)
-nothing # hide
-
-# ## Fit and inspect the candidates
+# Elicit six hyperparameters: signal rate `S`, line location `mu`, signal width `width`,
+# background log variation `sigma_B`, mean background rate `m_B`, and energy scale `lam`.
+# `width` describes individual signal energies around `mu`. Its prior describes uncertainty
+# in that detector resolution. Every candidate enforces the bounds in `prior_bounds`.
+# These hard bounds differ from approximate targets for 95% prior upper quantiles.
+# The location families also assume symmetry about 125 keV.
 #
-# NelderMead needs no derivatives. Each family keeps the solution from each declared start.
-# A solver result records termination, while validation records the achieved beliefs.
+# These illustrative answers come from external knowledge, independently of search events.
+# Each positive quantity has a median and a 95% upper quantile. The location has 90%
+# probability between 124 and 126 keV. Rates use events/year and energy quantities use keV.
 
-problem = Elicitation(beliefs, candidates)
-# NelderMead is deterministic. Stochastic solvers need an explicitly configured backend RNG.
-report = fit(Xoshiro(42), problem, NelderMead(); maxiters=2000, g_tol=1e-12)
-
-comparison = compare(report)
+answers = (
+    S_median=1.2,
+    S_q95=3.5,
+    mu_probability=0.9,
+    width_median=1.6,
+    width_q95=2.1,
+    sigma_B_median=0.4,
+    sigma_B_q95=0.6,
+    m_B_median=7.0,
+    m_B_q95=10.5,
+    lam_median=55.0,
+    lam_q95=80.0,
+)
+problem = Elicitation(signal_beliefs(answers), signal_candidates())
 nothing # hide
 
-# Check every start's error before reading its measure, then inspect solver termination
-# alongside the achieved values below.
-# Failed starts remain in the report. Solver success does not certify the expert's beliefs.
+# ## Fit and compare candidate hyperpriors
+#
+# The candidates compare bounded Beta and LogNormal shapes for the five positive
+# quantities, and Normal and Beta location shapes. All six hyperparameters are independent
+# within each candidate. The five backgrounds share uncertain hyperparameters.
 
-display([(; result.id, result.error) for result in report.results])
+report = fit(Xoshiro(42), problem, NelderMead(); maxiters=20000, g_tol=1e-12)
+display(collect(prior_summary(report)))
 all(result -> result.error === nothing, report.results) ||
-    error("Inspect the failed starts before continuing this example.")
+    error("Inspect failed starts before continuing.")
+display(collect(target_summary(report, (:beta_normal, 1))))
+comparison = compare(report)
+display(comparison.incomparable)
 
-# Inspect the achieved quartiles and an unelicited tail probability before selecting a family.
-# Rounding affects only the display:
-
-summary = map(report.results) do result
-    prior = result.measure
-    (;
-        id=result.id,
-        quartiles=map(
-            p -> round(evaluate(Quantile(p), prior).value; digits=3),
-            (0.25, 0.75),
-        ),
-        upper_tail=round(evaluate(Probability(4, Inf), prior).value; digits=4),
-        solver=string(result.solver.retcode),
-    )
-end
-display(collect(summary))
-
-# ## Review graphical feedback
+# Solver codes and achieved targets are retained for every start. Pareto comparisons
+# do not choose a prior family. Small residual differences do not settle scientific assumptions.
 #
-# The shared plotting helper uses the fitted native measures. Each curve is a retained fit,
-# not a mixture component or a probability weight on a family. The plot window is not a support bound.
+# ## Inspect all six marginal priors
+#
+# Each curve is one retained fit. Neither plot is a mixture of candidate families or a
+# credible band. Endpoints are omitted from density curves because a continuous Beta
+# density can diverge at a boundary without assigning a point mass there.
 
-figure = feedback(report)
 mkpath("elicitation-output")
-save("elicitation-output/prior-feedback.svg", figure);
-println("Wrote elicitation-output/prior-feedback.svg") #!md
+strength_figure = feedback(
+    report,
+    :S,
+    strength_bounds;
+    xlabel="Signal rate (events/year)",
+    levels=(0.5, 0.95),
+)
+save("elicitation-output/signal-prior.svg", strength_figure);
+marginal_figure = hyperprior_feedback(report)
+save("elicitation-output/hyperpriors.svg", marginal_figure);
 nothing # hide
 
-# ![Prior density and cumulative probability for each retained fit.](elicitation-output/prior-feedback.svg)
-
-# The fitted quartiles are near the targets in both families. The Student-t tail is heavier.
-# Two quartiles do not identify tail behavior, so use domain knowledge and further beliefs
-# to assess that difference. `compare(report)` compares discrepancies for each target,
-# retaining tradeoffs and ties. Small numerical differences do not settle the family choice.
-# These retained points trade off the two target discrepancies:
-
-display(comparison.incomparable)
+# ![Candidate signal-rate densities and cumulative probabilities.](elicitation-output/signal-prior.svg)
+# ![Cumulative probabilities for all six elicited hyperparameters.](elicitation-output/hyperpriors.svg)
 #
-# ## Select and use a prior
+# The 95% quantile target is not a posterior upper limit. Continuous strength priors
+# assign no probability mass to exactly `S = 0`; a background-only model comparison
+# would require a separate null hypothesis.
 #
-# Approximate targets do not impose hard tolerances. Review their achieved values before
-# acceptance, or add `Hard` beliefs when a tolerance is required.
-# Fresh validation records the actual statistics. Here each check is `:target`, because
-# these two judgments are approximate targets rather than hard requirements.
+# ## Validate and select explicitly
+#
+# The fitted targets are approximate, so their checks are `:target`, not hard pass/fail
+# certificates. Physical support restrictions come from the bounded candidate laws.
 
-checks = validate(Xoshiro(43), report)
-display([[check.status for check in row] for row in checks.checks])
-
-# The decision is another recorded input. It is not inferred from the smallest residual
-# or from the order of the candidates. Keep it with the questions, answers, script, seeds,
-# and pinned environment when replaying this elicitation.
-
+validation = validate(Xoshiro(43), report)
+display([[check.status for check in row] for row in validation.checks])
 decision = (
-    id=(:normal, 1),
-    rationale="The expert accepts the Normal family after reviewing both families and their tails.",
+    id=(:beta_normal, 1),
+    rationale="The expert accepts the bounded Beta hyperparameters and calibrated Normal location after reviewing both alternatives.",
 )
-selection = select(report, decision.id; validation=checks, rationale=decision.rationale)
+selection = select(report, decision.id; validation, rationale=decision.rationale)
 prior = measure(selection)
-draws = rand(Xoshiro(44), prior^10)
-display(draws)
+nothing # hide
 
-# `prior` is the selected native MeasureBase measure, in the offset's original units.
-# Loading this file in a REPL also leaves `report`, `checks`, `selection`, and `figure`
-# available for inspection. The [Wren tutorial](@ref wren-tutorial) shows model integration.
+# ## Use the prior in the scientific model
+#
+# The selected object is a native hyperprior. Draw the five background rates conditionally
+# to obtain the full hierarchical prior. The lognormal correction preserves their mean `m_B`.
+# The following fresh synthetic dataset changes the original example's numbers.
+# Its generating values are used only to make this demonstration reproducible, not to fit priors.
+
+truth = (S=0.8, mu=125.4, width=1.6, sigma_B=0.35, m_B=7.0, lam=55.0)
+truth_parameters = background_parameters(Xoshiro(2026), truth)
+data = simulate_spectrum(Xoshiro(2027), truth_parameters)
+display((
+    exposure=experiment.exposure,
+    efficiency=experiment.efficiency,
+    counts=data.counts,
+    events=length(data.energy),
+))
+
+rng = Xoshiro(44)
+hyperparameters = rand(rng, prior)
+parameters = background_parameters(rng, hyperparameters)
+display((
+    S=parameters.S,
+    mu=parameters.mu,
+    width=parameters.width,
+    B=parameters.B,
+    loglikelihood=spectrum_loglikelihood(parameters, data),
+))
+
+# This is an eleven-dimensional parameter point: six hyperparameters and five backgrounds.
+# Inspect paired draws to retain their joint meaning. The left panel reflects the assumed
+# hyperparameter independence. Its colour shows uncertain signal width. The right panel
+# shows dependence induced by the shared uncertain background mean and variation.
+
+joint_figure = joint_feedback(Xoshiro(46), prior)
+save("elicitation-output/joint-prior.svg", joint_figure);
+nothing # hide
+
+# ![Joint signal and hierarchical background prior draws.](elicitation-output/joint-prior.svg)
+#
+# The likelihood combines per-detector counts with individual event energies.
+# Julia's `Exponential(lam)` uses `lam` as its mean scale in keV.
+# No energy selection window or histogram approximation enters the likelihood.
+#
+# ## Inspect prior predictive implications
+#
+# Blue curves are expected binned spectra from 200 hierarchical prior draws. Black points
+# are the synthetic observed counts per bin. The right panel draws total counts from the
+# Poisson model, with the observed total marked in black. These are prior predictions,
+# not posterior fits or validation of hard bounds. Binning is only a display choice.
+# Feedback used to revise elicited judgments must remain independent of these search observations.
+
+predictive_figure = spectrum_feedback(Xoshiro(45), prior, data; ndraws=200)
+save("elicitation-output/prior-predictive.svg", predictive_figure);
+println("Plots saved in elicitation-output") #!md
+nothing # hide
+
+# ![Prior expected spectra and predictive total counts, compared with synthetic observations.](elicitation-output/prior-predictive.svg)

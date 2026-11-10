@@ -69,10 +69,13 @@ the prior. Treat report measures and captured callbacks as read-only after valid
 The [programmatic workflow](@ref scalar-tutorial) runs a recorded set of judgments and an
 explicit decision as a script. The [guided REPL session](@ref guided-tutorial) asks one
 question at a time, shows feedback, and revises an answer before accepting a prior.
-Both use the same constructors, fitting methods, validation, and selection rules.
+Both use the same constructors, fitting methods, validation, and selection rules for a
+[rare-event signal and background model](@ref rare-event-model). Six hyperparameters cover
+signal strength, line location, resolution, and background uncertainty. Five conditional
+background rates complete the hierarchy. Every hyperparameter has explicit support and elicited targets.
 
 Loading Optimization.jl adds `fit(rng, problem, algorithm; ...)`. Both workflows compare
-Normal and Student-t families rather than choosing a family automatically.
+bounded Beta, LogNormal, and Normal shapes rather than choosing a family automatically.
 
 The [Wren tutorial](@ref wren-tutorial) fits a joint coefficient and scale prior, preserves
 coefficient dependence through Plaice, then samples a posterior with NUTS.
