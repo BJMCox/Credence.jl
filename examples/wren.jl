@@ -10,8 +10,8 @@
 # julia --project=test/integration examples/wren.jl
 # ```
 #
-# This example runs in the integration CI job. Its environment pins the supported Wren,
-# Plaice, and MeasureBase development versions separately from the core package.
+# Wren is currently private, so running this example requires repository access.
+# Its environment pins Wren, Plaice, and MeasureBase separately from the core package.
 #
 # ## Define a joint family
 #

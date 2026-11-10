@@ -36,7 +36,8 @@ julia --project=docs -e 'include("dev/setup.jl"); Pkg.develop(path=".")'
 julia --project=docs docs/make.jl
 ```
 
-Run the Wren integration tests with Julia 1.13 or later, which reads their source pins:
+Run the Wren integration tests with Julia 1.13 or later and access to the private
+Wren repository:
 
 ```sh
 julia --project=test/integration -e 'using Pkg; Pkg.instantiate()'
