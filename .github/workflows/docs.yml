@@ -24,7 +24,7 @@ jobs:
         shell: julia --color=yes --project=docs {0}
         run: |
           using Pkg
-          include("dev/setup.jl")
+          include(joinpath(pwd(), "dev", "setup.jl"))
           Pkg.develop(; path=".")
           Pkg.instantiate()
       - name: Build documentation
