@@ -12,6 +12,7 @@ using ForwardDiff
 import Enzyme
 using LogDensityProblems: LogDensityProblems
 using Wren: @wren, @observe, VecModel, FromPrior, nuts, AutoEnzyme, Reverse
+import WrenCore
 using VarNames: @vn
 
 const covariance = [1.0 0.4; 0.4 0.8]
@@ -111,6 +112,60 @@ end
     @test gradient ≈ expected_gradient
     @test LogDensityProblems.logdensity(vm, z) ≈ value
 
-    chain = nuts(Xoshiro(785), model, 32; adtype=AutoForwardDiff(), progress=false)
+    copies = filter(!=(:prior), WrenCore._copied_args(model))
+    readonly_model = WrenCore._with_copied_args(model, copies)
+    enzyme = VecModel(
+        readonly_model,
+        AutoEnzyme(; mode=Reverse);
+        latent_source=FromPrior(Xoshiro(789)),
+        reduce_copies=false,
+    )
+    for point in (z, [0.0, 0.0, 0.0], [1.1, -0.4, 0.2])
+        fd_value, fd_gradient = LogDensityProblems.logdensity_and_gradient(vm, point)
+        enz_value, enz_gradient = LogDensityProblems.logdensity_and_gradient(enzyme, point)
+        @test enz_value ≈ fd_value
+        @test enz_gradient ≈ fd_gradient
+    end
+    chain = nuts(
+        Xoshiro(785),
+        readonly_model,
+        32;
+        adtype=AutoEnzyme(; mode=Reverse),
+        reduce_copies=false,
+        progress=false,
+    )
     @test size(chain) == (32, 1)
+end
+
+@wren function buffered_regression(prior, buffer, y)
+    theta ~ prior
+    for i in eachindex(buffer)
+        buffer[i] = theta.beta[1]
+    end
+    @observe y ~ Normal(sum(buffer), theta.sigma)
+end
+
+@testset "Read-only prior elision keeps mutable buffers protected" begin
+    prior = joint_prior([0.2, -0.1, -0.3])
+    caller_buffer = zeros(2)
+    model = buffered_regression(prior, caller_buffer, 0.4)
+    copies = filter(!=(:prior), WrenCore._copied_args(model))
+    model = WrenCore._with_copied_args(model, copies)
+    vm = VecModel(
+        model,
+        AutoEnzyme(; mode=Reverse);
+        latent_source=FromPrior(Xoshiro(790)),
+        reduce_copies=false,
+    )
+    before = copy(model.args.buffer)
+    z = [0.4, -0.2, log(0.8)]
+    residual = 0.4-2z[1]
+    expected_gradient = vcat(
+        -(covariance \ (z[1:2]-[0.2, -0.1])) + residual/exp(2z[3])*[2, 0],
+        -(z[3]+0.3)/0.4^2 - 1 + residual^2/exp(2z[3]),
+    )
+    _, gradient = LogDensityProblems.logdensity_and_gradient(vm, z)
+    @test gradient ≈ expected_gradient
+    @test model.args.buffer == before
+    @test caller_buffer == zeros(2)
 end

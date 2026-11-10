@@ -44,5 +44,8 @@ julia --project=test/integration test/integration/runtests.jl
 
 This prototype does not yet implement the full elicitation workflow. Formula macros, predictive
 fitting, tilting, marginal locks, judgment-uncertainty propagation, notebook controls, and FlatPPL
-export remain planned. Joint Wren inference is tested with ForwardDiff. Scalar Enzyme support
-is checked separately; structured Enzyme support has an upstream limitation.
+export remain planned. Joint Wren inference is tested with ForwardDiff and Enzyme.
+The Enzyme example elides only its read-only prior's defensive copy to avoid
+[Enzyme #3527](https://github.com/EnzymeAD/Enzyme.jl/issues/3527), related to
+[#3561](https://github.com/EnzymeAD/Enzyme.jl/issues/3561). It uses the pinned Wren
+version's internal copy-selection API. Copies of mutable work buffers must remain enabled.

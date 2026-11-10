@@ -6,9 +6,9 @@ using Distributions: Normal, MvNormal, LogNormal, mean
 using Plaice
 using PDMats
 using Optimization, OptimizationOptimJL
-using Wren: @wren, @observe, nuts
-using ForwardDiff
-using ADTypes: AutoForwardDiff
+using Wren: @wren, @observe, nuts, AutoEnzyme, Reverse
+import WrenCore
+import Enzyme
 using Random: Xoshiro
 
 covariance = [1.0 0.4; 0.4 0.8]
@@ -55,4 +55,15 @@ prior = measure(selection)
 end
 
 model = regression(prior, 0.4)
-chain = nuts(Xoshiro(1003), model, 200; adtype=AutoForwardDiff(), progress=false)
+# This model only reads its fixed prior. Elide that copy alone to avoid Enzyme #3527.
+# This uses the internal API of the pinned Wren version, not a general no-copy policy.
+copies = filter(!=(:prior), WrenCore._copied_args(model))
+model = WrenCore._with_copied_args(model, copies)
+chain = nuts(
+    Xoshiro(1003),
+    model,
+    200;
+    adtype=AutoEnzyme(; mode=Reverse),
+    reduce_copies=false,
+    progress=false,
+)

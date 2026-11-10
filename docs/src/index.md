@@ -57,8 +57,14 @@ its own explicitly configured RNG, passed through the solver's options.
 
 Loading Plaice activates vectorization and support charts for MeasureBase's wrapped laws
 and named products. Use one joint prior site in Wren to retain coefficient dependence.
-The integration checks vector round trips, Jacobians, analytic gradients, and NUTS with
-ForwardDiff. It does not claim general smooth charts for arbitrary weighted or mixed measures.
+The integration checks vector round trips, Jacobians, and gradients with ForwardDiff and Enzyme,
+then runs Enzyme NUTS. It does not claim general smooth charts for arbitrary weighted or mixed measures.
+
+The Enzyme example avoids [a deepcopy-rule failure](https://github.com/EnzymeAD/Enzyme.jl/issues/3527)
+by removing only its fixed, read-only prior from Wren's copy set. The related
+[mixed-return adjoint issue](https://github.com/EnzymeAD/Enzyme.jl/issues/3561) also needs attention upstream.
+The workaround uses the pinned Wren version's internal API. It does not disable copies of mutable arguments:
+Wren can write latent values into those buffers, and removing their copies can lose gradients.
 
 ## Planned work
 
