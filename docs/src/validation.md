@@ -6,12 +6,12 @@ how closely a family represents the elicited judgments.
 
 ## Statistics and requirements
 
-| Belief | Interpretation |
-|:--|:--|
-| `Hard(id, statistic, AtLeast(x))` | The statistic is at least `x`. |
-| `Hard(id, statistic, AtMost(x))` | The statistic is at most `x`. |
-| `Hard(id, statistic, Between(a, b))` | The statistic lies in the closed interval `[a, b]`. |
-| `Hard(id, statistic, EqualTo(x))` | The statistic equals `x` exactly. |
+| Belief                                                  | Interpretation                                                       |
+|:------------------------------------------------------- |:-------------------------------------------------------------------- |
+| `Hard(id, statistic, AtLeast(x))`                       | The statistic is at least `x`.                                       |
+| `Hard(id, statistic, AtMost(x))`                        | The statistic is at most `x`.                                        |
+| `Hard(id, statistic, Between(a, b))`                    | The statistic lies in the closed interval `[a, b]`.                  |
+| `Hard(id, statistic, EqualTo(x))`                       | The statistic equals `x` exactly.                                    |
 | `Approximate(id, statistic, target; scale, importance)` | Fit a point target using the given discrepancy scale and importance. |
 
 Use `Between` for an elicited tolerance and `EqualTo` for exact equality.
@@ -51,13 +51,13 @@ solution from each start. Subsequent comparisons concern this finite set of resu
 approximate target. Importance weights control fitting, while comparison uses the full
 discrepancy vector. Hard requirements determine feasibility.
 
-| Field | Contents |
-|:--|:--|
-| `feasible` | Results satisfying every hard requirement, with every target defined. |
-| `dominates` | Ordered pairs in which the first result improves at least one discrepancy and worsens none. |
-| `ties` | Pairs with equal discrepancy vectors. |
-| `incomparable` | Pairs that trade improvement in one target for deterioration in another. |
-| `unresolved` | Pairs whose evidence leaves the comparison uncertain. |
+| Field          | Contents                                                                                    |
+|:-------------- |:------------------------------------------------------------------------------------------- |
+| `feasible`     | Results satisfying every hard requirement, with every target defined.                       |
+| `dominates`    | Ordered pairs in which the first result improves at least one discrepancy and worsens none. |
+| `ties`         | Pairs with equal discrepancy vectors.                                                       |
+| `incomparable` | Pairs that trade improvement in one target for deterioration in another.                    |
+| `unresolved`   | Pairs whose evidence leaves the comparison uncertain.                                       |
 
 Ungrouped and combined result IDs have the form `(candidate_id, start_index)`.
 Marginal result IDs also include the target reference. The form

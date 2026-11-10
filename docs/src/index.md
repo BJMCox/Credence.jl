@@ -31,10 +31,12 @@ using Credence, MeasureBase, Random
 import Distributions
 
 beliefs = (:x => (Hard(:median, Quantile(0.5), Between(-0.1, 0.1)),),)
-candidates = (:x => (
-    :normal => NormalFamily(location=0.0),
-    :lognormal => LogNormalFamily(location=0.0),
-),)
+candidates = (
+    :x => (
+        :normal => NormalFamily(location=0.0),
+        :lognormal => LogNormalFamily(location=0.0),
+    ),
+)
 problem = Elicitation(beliefs, candidates)
 report = fit(Xoshiro(1), problem)
 validation = validate(Xoshiro(2), report)

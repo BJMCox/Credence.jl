@@ -49,9 +49,7 @@ candidates = (
         :beta => ScaledBetaFamily(0.0, 8.0),
         :lognormal => TruncatedFamily(Distributions.LogNormal, 0.0, 8.0),
     ),
-    :B => (
-        :joint => MvLogNormalFamily(2),
-    ),
+    :B => (:joint => MvLogNormalFamily(2),),
 )
 problem = Elicitation(beliefs, candidates)
 problem[:S, :median].target
@@ -70,10 +68,13 @@ A custom `Candidate` supplies a measure builder and starting parameter records:
 ```@example inputs
 custom = Candidate(
     :beta,
-    p -> asmeasure(Distributions.LocationScale(
-        0.0, 8.0,
-        Distributions.Beta(exp(p.log_alpha), exp(p.log_beta)),
-    )),
+    p -> asmeasure(
+        Distributions.LocationScale(
+            0.0,
+            8.0,
+            Distributions.Beta(exp(p.log_alpha), exp(p.log_beta)),
+        ),
+    ),
     ((log_alpha=0.5, log_beta=1.0),),
 )
 nothing # hide
@@ -91,13 +92,15 @@ parameter values:
 ```@example inputs
 joint_beliefs = (
     Joint(@vn(B[1]), @vn(B[2])) => (
-        Approximate(:covariance, CovarianceMatrix(),
+        Approximate(
+            :covariance,
+            CovarianceMatrix(),
             UpperTriangular([4.0 1.0; 0.0 9.0]);
-            scale=UpperTriangular([0.5 0.2; 0.0 1.0])),
+            scale=UpperTriangular([0.5 0.2; 0.0 1.0]),
+        ),
     ),
-    Derived(:background_sum, :B, B -> sum(B)) => (
-        Approximate(:mean, Mean(), 12.0; scale=2.0),
-    ),
+    Derived(:background_sum, :B, B -> sum(B)) =>
+        (Approximate(:mean, Mean(), 12.0; scale=2.0),),
 )
 nothing # hide
 ```
@@ -122,7 +125,9 @@ Specify which marginal families form each joint candidate. `Independent` constru
 product measure:
 
 ```@example inputs
-joint_problem = Elicitation((beliefs..., joint_beliefs...), candidates;
+joint_problem = Elicitation(
+    (beliefs..., joint_beliefs...),
+    candidates;
     combinations=(
         :baseline => Independent(:S => :beta, :B => :joint),
         :alternative => Independent(:S => :lognormal, :B => :joint),
