@@ -1,0 +1,14 @@
+name = "Credence"
+uuid = "178d0c97-14ee-4441-973b-23c323c9f53d"
+version = "0.1.0-DEV"
+authors = ["Jessica Cox <bcox@mpp.mpg.de> and contributors"]
+
+[compat]
+Test = "1"
+julia = "1.10"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

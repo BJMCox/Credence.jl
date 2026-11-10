@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['*']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+
+jobs:
+  test:
+    name: Julia ${{ matrix.runner.version }} - ${{ matrix.runner.os }}
+    runs-on: ${{ matrix.runner.os }}
+    timeout-minutes: 30
+    permissions:
+      actions: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - version: '1.10'
+            os: ubuntu-latest
+          - version: '1'
+            os: ubuntu-latest
+          - version: '1'
+            os: macos-latest
+          - version: '1'
+            os: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # 7.0.1
+      - uses: julia-actions/setup-julia@da908477b5db94c10ffce8cfea9f2b3b9d5db687 # 3.0.3
+        with:
+          version: ${{ matrix.runner.version }}
+      - uses: julia-actions/cache@9353db09a0f2bbbdec6f41791918c75d37391b36 # 3.5.0
+      - uses: julia-actions/julia-runtest@6e050c8013b833b1195105ff2fce9cd802f53271 # 1.12.0
