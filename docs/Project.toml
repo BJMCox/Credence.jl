@@ -1,4 +1,5 @@
 [deps]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Credence = "178d0c97-14ee-4441-973b-23c323c9f53d"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
@@ -9,6 +10,7 @@ MeasureBase = "fa1605e6-acd5-459c-a1e6-7e635759db14"
 Optimization = "7f7a1694-90dd-40f0-9382-eb1efda571ba"
 OptimizationOptimJL = "36348300-93cb-4f02-beb5-3c3902f8871e"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+VarNames = "09a315b2-63fc-4165-8d7f-d59368e770cc"
 
 [sources]
 Credence = {path = ".."}
@@ -16,6 +18,7 @@ HeterogeneousComputing = {rev = "18f24c9b7b7ad92e89cabb96cddfd4ef12d4565d", url 
 MeasureBase = {rev = "ad53c244f905d57c8f35c15fe1da0ef163023096", url = "https://github.com/JuliaMath/MeasureBase.jl"}
 
 [compat]
+CairoMakie = "0.15"
 Distributions = "0.25"
 Documenter = "1.18"
 DocumenterCodeBlocks = "1.5"
@@ -25,4 +28,5 @@ MeasureBase = "0.15"
 Optimization = "4, 5"
 OptimizationOptimJL = "0.4"
 Random = "1"
+VarNames = "0.1"
 julia = "1.10"

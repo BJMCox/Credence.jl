@@ -4,16 +4,41 @@ using DocumenterCodeBlocks
 using Literate
 
 root = dirname(@__DIR__)
+
+function self_contained(source)
+    for name in ("signal_background", "feedback")
+        included = read(joinpath(root, "examples", "$name.jl"), String)
+        if name == "signal_background"
+            included = replace(included, "# ## " => "# ### ")
+            included =
+                replace(included, r"^# # .*\n" => "# ## Model and candidate definitions\n")
+        else
+            included = "# ## Plotting functions\n#\n" * included
+        end
+        source = replace(
+            source,
+            "include(joinpath(pkgdir(Credence), \"examples\", \"$name.jl\"))" =>
+                included,
+        )
+    end
+    return source
+end
+
 for name in ("scalar", "wren")
     options = if name == "wren"
         (; codefence="```julia" => "```")
     else
         (;)
     end
+    preprocess = identity
+    if name == "scalar"
+        preprocess = self_contained
+    end
     Literate.markdown(
         joinpath(root, "examples", "$name.jl"),
         joinpath(@__DIR__, "src", "tutorials");
         credit=false,
+        preprocess=preprocess,
         options...,
     )
 end
@@ -32,11 +57,12 @@ makedocs(;
     ),
     pages=[
         "Getting started" => "index.md",
-        "Tutorials" => [
-            "Comparing prior families" => "tutorials/scalar.md",
-            "A joint prior in Wren" => "tutorials/wren.md",
+        "Examples" => [
+            "Signal-background elicitation" => "tutorials/scalar.md",
+            "Wren integration" => "tutorials/wren.md",
         ],
-        "Guide" => ["Beliefs and validation" => "validation.md"],
+        "Guide" =>
+            ["Named inputs" => "inputs.md", "Beliefs and validation" => "validation.md"],
         "Reference" => "api.md",
     ],
     plugins=[CodeBlocks()],

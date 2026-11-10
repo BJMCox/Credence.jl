@@ -1,15 +1,16 @@
 # Credence.jl
 
-Credence turns an expert's beliefs into candidate prior distributions. State probability,
-quantile, mean, or spread beliefs, compare several families, then select a prior explicitly.
-The result is a native MeasureBase measure that can enter a Wren model.
+Prior elicitation expresses expert knowledge as a probability distribution. Credence fits
+several distribution families to judgments about probabilities, quantiles, means, and
+standard deviations. The expert reviews their agreement with those judgments and selects
+a prior, recording the reason for the choice.
 
-This is an initial prototype for a single expert. Candidate comparison supports expert
-judgment. It does not choose a family for you.
+The package supports a single expert. Priors use MeasureBase and can enter Wren models
+through Plaice.
 
 ## Installation
 
-Credence is not registered. From a source checkout, install its pinned development dependencies:
+Install the prototype from its source repository:
 
 ```sh
 git clone https://github.com/BJMCox/Credence.jl.git
@@ -17,23 +18,24 @@ cd Credence.jl
 julia --project=. dev/setup.jl
 ```
 
-The core supports Julia 1.10 and later. Use Julia 1.13 or later for the example environments,
-which use Pkg's source pins for the development MeasureBase and Wren APIs.
+The package supports Julia 1.10 and later. The examples require Julia 1.13 or later because
+their environments pin development versions of MeasureBase and Wren through Pkg source entries.
 
-## Check a belief
+## A first example
 
-Suppose the prior's median should lie between -0.1 and 0.1. Compare a standard Normal
-and a standard Exponential distribution at their declared parameter points:
+Suppose the prior median of `x` must lie between -0.1 and 0.1. Represent this requirement
+with `Hard`, and consider Normal and LogNormal families:
 
 ```@example start
 using Credence, MeasureBase, Random
+import Distributions
 
-belief = Hard(:median, Quantile(0.5), Between(-0.1, 0.1))
-candidates = (
-    Candidate(:normal, _ -> StdNormal(), [0.0]),
-    Candidate(:exponential, _ -> StdExponential(), [0.0]),
-)
-problem = Elicitation((belief,), candidates)
+beliefs = (:x => (Hard(:median, Quantile(0.5), Between(-0.1, 0.1)),),)
+candidates = (:x => (
+    :normal => NormalFamily(location=0.0),
+    :lognormal => LogNormalFamily(location=0.0),
+),)
+problem = Elicitation(beliefs, candidates)
 report = fit(Xoshiro(1), problem)
 validation = validate(Xoshiro(2), report)
 
@@ -43,16 +45,16 @@ map(validation.checks) do checks
 end
 ```
 
-`fit(rng, problem)` evaluates the supplied points. It does not optimize them. The Normal
-median satisfies the requirement. The Exponential median does not.
+With no optimization algorithm supplied, `fit` evaluates each family's starting parameters.
+The Normal median is 0 and satisfies the requirement. The LogNormal median is 1 and falls
+outside the interval.
 
-## Select and use a prior
-
-Selection records your rationale and retains the validation that supports acceptance:
+After reviewing these checks, select the Normal result and record the reason:
 
 ```@example start
 selection = select(
     report,
+    :x,
     (:normal, 1);
     validation,
     rationale="The median satisfies the expert's stated range.",
@@ -61,21 +63,27 @@ prior = measure(selection)
 rand(Xoshiro(3), prior^5)
 ```
 
-`measure(selection)` returns the selected measure itself. The report stays separate from
-the prior. Treat report measures and captured callbacks as read-only after validation.
+`measure(selection)` returns the prior as a MeasureBase measure. The fitting report and
+validation remain available separately. Treat the measures and callbacks in a validated
+report as read-only, so that the validation continues to describe the selected prior.
 
-## Fit and compare families
+For numerical fitting, load Optimization.jl and call `fit(rng, problem, algorithm; ...)`.
 
-Loading Optimization.jl adds `fit(rng, problem, algorithm; ...)`. The
-[family comparison tutorial](@ref scalar-tutorial) fits Normal and Student-t candidates
-to the same quartiles and examines their different tails.
+## Examples and guides
 
-The [Wren tutorial](@ref wren-tutorial) fits a joint coefficient and scale prior, preserves
-coefficient dependence through Plaice, then samples a posterior with NUTS.
+The [signal-background example](@ref scalar-tutorial) defines a rare-event model and elicits
+priors for its six hyperparameters. It includes candidate families, a revised judgment,
+prior selection, and prior predictive checks, with all definitions on the page.
 
-[Beliefs and validation](@ref validation-guide) explains hard requirements, approximate
-targets, numerical evidence, and acceptance. The [API reference](@ref api-reference)
-lists the available constructors and operations.
+The [Wren example](@ref wren-tutorial) elicits a joint regression prior and uses it to
+sample a posterior with NUTS.
 
-Predictive fitting, formula macros, tilting, marginal locks, judgment-uncertainty propagation,
-portable persistence, interactive controls, and FlatPPL export remain planned.
+[Named inputs](@ref input-guide) describes parameter references, arrays, and joint beliefs.
+[Beliefs and validation](@ref validation-guide) defines the fitting objective, candidate
+comparisons, and the evidence required for acceptance. The [API reference](@ref api-reference)
+contains the constructor and method documentation.
+
+## Development status
+
+Credence is a prototype. Planned work includes predictive fitting, formula syntax, tilting,
+propagation of judgment uncertainty, portable persistence, interactive controls, and FlatPPL export.

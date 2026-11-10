@@ -10,10 +10,11 @@ struct Estimate{V,L,U}
     lower::L
     upper::U
     evidence::Symbol
-    function Estimate(value; lower=value, upper=value, evidence=:analytic)
-        lower <= value <= upper ||
+    n::Int
+    function Estimate(value; lower=value, upper=value, evidence=:analytic, n=0)
+        all(lower .<= value) && all(value .<= upper) ||
             throw(ArgumentError("estimate lies outside its enclosure"))
-        new{typeof(value),typeof(lower),typeof(upper)}(value, lower, upper, evidence)
+        new{typeof(value),typeof(lower),typeof(upper)}(value, lower, upper, evidence, n)
     end
 end
 
@@ -64,6 +65,15 @@ The population standard deviation, when it exists.
 """
 struct Std <: AbstractStatistic end
 
+"""The covariance of two scalar quantities selected by `Joint`."""
+struct Covariance <: AbstractStatistic end
+"""The correlation of two scalar quantities selected by `Joint`."""
+struct Correlation <: AbstractStatistic end
+"""The covariance matrix of a vector-valued quantity or a `Joint` selection."""
+struct CovarianceMatrix <: AbstractStatistic end
+"""The correlation matrix of a vector-valued quantity or a `Joint` selection."""
+struct CorrelationMatrix <: AbstractStatistic end
+
 """
     Statistic(f; label=:custom)
 
@@ -78,14 +88,14 @@ Statistic(f; label=:custom) = Statistic(f, label)
 """
     Analytic()
 
-Evaluate through analytic measure operations, without sampling.
+Evaluate through analytic measure operations.
 """
 struct Analytic end
 
 """
     MonteCarlo(n; alpha=0.01)
 
-Validate event probabilities from n independent draws with failure probability alpha.
+Evaluate statistics from n independent draws with numerical uncertainty at level alpha.
 """
 struct MonteCarlo{T}
     n::Int
@@ -108,8 +118,12 @@ function evaluate(statistic::AbstractStatistic, prior; plan=Analytic(), rng=noth
 end
 
 function _estimate(x::Estimate)
-    isfinite(x.value) || throw(ArgumentError("statistic is not finite"))
+    all(isfinite, x.value) || throw(ArgumentError("statistic is not finite"))
     x
+end
+function _estimate(x::AbstractArray)
+    all(isfinite, x) || throw(ArgumentError("statistic is not finite"))
+    Estimate(x)
 end
 function _estimate(x::Real)
     isfinite(x) || throw(ArgumentError("statistic is not finite"))
@@ -117,6 +131,27 @@ function _estimate(x::Real)
 end
 _evaluate(s::Mean, prior, ::Analytic, rng) = _estimate(mean(prior))
 _evaluate(s::Std, prior, ::Analytic, rng) = _estimate(std(prior))
+_covariance(prior) = cov(prior)
+_covariance(prior::ProductMeasure{<:AbstractArray}) =
+    Diagonal(vec(map(var, marginals(prior))))
+_evaluate(::CovarianceMatrix, prior, ::Analytic, rng) = _estimate(_covariance(prior))
+function _evaluate(::CorrelationMatrix, prior, ::Analytic, rng)
+    covariance = _covariance(prior)
+    scales = sqrt.(diag(covariance))
+    _estimate(covariance ./ (scales * scales'))
+end
+function _evaluate(::Covariance, prior, ::Analytic, rng)
+    covariance = _covariance(prior)
+    size(covariance) == (2, 2) ||
+        throw(DimensionMismatch("Covariance requires two scalar quantities"))
+    _estimate(covariance[1, 2])
+end
+function _evaluate(::Correlation, prior, ::Analytic, rng)
+    covariance = _covariance(prior)
+    size(covariance) == (2, 2) ||
+        throw(DimensionMismatch("Correlation requires two scalar quantities"))
+    _estimate(covariance[1, 2] / sqrt(covariance[1, 1] * covariance[2, 2]))
+end
 function _evaluate(s::Quantile, prior, ::Analytic, rng)
     _estimate(MeasureBase.invsmf(prior, MeasureBase.smf(prior, -Inf) + s.p))
 end
@@ -140,5 +175,11 @@ function _evaluate(s::Probability, prior, plan::MonteCarlo, rng)
     hits = count(_ -> s.event(rand(rng, prior)), 1:plan.n)
     p = hits / plan.n
     error = sqrt(log(2 / plan.alpha) / (2 * plan.n))
-    Estimate(p; lower=max(0, p-error), upper=min(1, p+error), evidence=:statistical)
+    Estimate(
+        p;
+        lower=max(0, p-error),
+        upper=min(1, p+error),
+        evidence=:statistical,
+        n=plan.n,
+    )
 end

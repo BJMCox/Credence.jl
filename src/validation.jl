@@ -15,22 +15,38 @@ end
 
 Fresh belief checks tied to one fit report.
 """
-struct Validation{R,C,P}
+struct Validation{R,C,P,S}
     report::R
     checks::C
     plan::P
+    seed::S
 end
+Validation(report, checks, plan) = Validation(report, checks, plan, nothing)
 
-function _check(belief, prior, plan, rng)
+function _check_estimate(belief, estimate)
+    estimate === nothing && return Check(belief.id, nothing, :pending, nothing)
+    estimate isa EvaluationFailure &&
+        return Check(belief.id, nothing, :undefined, estimate.error)
     try
-        estimate = evaluate(belief.statistic, prior; plan, rng)
         status = if belief isa Approximate
+            _discrepancy(belief, estimate.value)
             :target
         else
-            lower, upper = _bounds(belief.relation)
-            if lower <= estimate.lower && estimate.upper <= upper
+            entries = _hard_entries(belief, estimate.value)
+            isempty(entries) &&
+                throw(ArgumentError("hard belief has no supplied free constraints"))
+            satisfied = all(entries) do index
+                lower, upper = _entry_bounds(belief, index)
+                lower <= _at(estimate.lower, index) &&
+                    _at(estimate.upper, index) <= upper
+            end
+            violated = any(entries) do index
+                lower, upper = _entry_bounds(belief, index)
+                _at(estimate.upper, index) < lower || upper < _at(estimate.lower, index)
+            end
+            if satisfied
                 :satisfied
-            elseif estimate.upper < lower || upper < estimate.lower
+            elseif violated
                 :violated
             else
                 :inconclusive
@@ -52,24 +68,41 @@ end
 
 Reevaluate fixed results. `MonteCarlo` allocates alpha across all hard checks in this report.
 """
-function validate(rng::Union{AbstractRNG,GenContext}, report::FitReport; plan=Analytic())
-    _validation(rng, report, plan)
+function validate(
+    rng::Union{AbstractRNG,GenContext},
+    report::FitReport;
+    plan=Analytic(),
+    sampling=nothing,
+)
+    _validation(rng, report, plan; sampling)
 end
-function _validation(rng, report, plan)
+function _validation(rng, report, plan; sampling=nothing)
+    force_sampling = plan isa MonteCarlo
+    budget = force_sampling ? plan : sampling
     nchecks = count(b -> b isa Hard, report.problem.beliefs) * length(report.results)
-    per_check = if plan isa MonteCarlo && nchecks > 0
-        MonteCarlo(plan.n; alpha=plan.alpha/nchecks)
+    per_check = if budget isa MonteCarlo && nchecks > 0
+        MonteCarlo(budget.n; alpha=budget.alpha/nchecks)
     else
-        plan
+        budget
     end
+    seed = budget === nothing ? nothing : _sampling_seed(rng)
+    stream = seed === nothing ? rng : _sampling_stream(rng, seed)
     checks = map(report.results) do result
         if result.error === nothing
-            map(b -> _check(b, result.measure, per_check, rng), report.problem.beliefs)
+            estimates = _estimates(
+                report.problem.beliefs,
+                result.measure,
+                result.candidate.scope;
+                sampling=per_check,
+                rng=stream,
+                force_sampling,
+            )
+            map(_check_estimate, report.problem.beliefs, estimates)
         else
             map(b -> Check(b.id, nothing, :undefined, result.error), report.problem.beliefs)
         end
     end
-    Validation(report, checks, plan)
+    Validation(report, checks, budget === nothing ? plan : budget, seed)
 end
 
 struct Selection{R,V,I,N}
@@ -78,6 +111,41 @@ struct Selection{R,V,I,N}
     index::I
     role::Symbol
     rationale::N
+end
+_factor_scope(selection::Selection) =
+    selection.report.results[selection.index].candidate.scope
+_factor_length(::Selection) = 0
+_factor_law(selection::Selection, parameters) = measure(selection)
+function _requirements(selection::Selection)
+    result = selection.report.results[selection.index]
+    filter(
+        b -> b isa Hard && _applicable(b.statistic, result.measure, result.candidate.scope),
+        selection.report.problem.beliefs,
+    )
+end
+
+"""`unlock(selection)` returns its fitted family start while retaining the selected law's hard beliefs."""
+function unlock(selection::Selection)
+    result = selection.report.results[selection.index]
+    builder = result.candidate.build
+    original = builder isa NamedBuilder ? builder.f : builder
+    Candidate(
+        result.candidate.id,
+        original,
+        (result.parameters,);
+        lower=result.candidate.lower,
+        upper=result.candidate.upper,
+        scope=result.candidate.scope,
+        requirements=_requirements(selection),
+    )
+end
+
+function _acceptable(candidate, checks)
+    local_scope = candidate.scope isa Union{VarName,Joint}
+    all(
+        c -> c.status in (:satisfied, :target) || (local_scope && c.status == :pending),
+        checks,
+    )
 end
 
 """
@@ -93,13 +161,19 @@ function select(report::FitReport, result_id; role=:accepted, validation=nothing
     result = report.results[index]
     result.error === nothing || throw(ArgumentError("cannot select a failed candidate"))
     if role == :accepted
-        validation isa Validation && validation.report === report ||
-            throw(ArgumentError("acceptance requires validation of this report"))
-        all(c -> c.status in (:satisfied, :target), validation.checks[index]) || throw(
+        validation isa Validation || throw(ArgumentError("acceptance requires validation"))
+        validation.report === report ||
+            throw(ArgumentError("validation belongs to another report"))
+        _acceptable(result.candidate, validation.checks[index]) || throw(
             ArgumentError("hard requirements remain violated, undefined, or inconclusive"),
         )
     end
     Selection(report, validation, index, role, rationale)
+end
+
+function select(report::FitReport, target, result_id; kwargs...)
+    reference = _targetid(_target(target))
+    select(report, (reference, result_id...); kwargs...)
 end
 
 """
@@ -114,26 +188,34 @@ measure(selection::Selection) = selection.report.results[selection.index].measur
 
 Compare feasible results by per-belief discrepancies, retaining ties and incomparability.
 """
-function compare(report::FitReport)
-    checks = collect(_validation(nothing, report, Analytic()).checks)
+function compare(report::FitReport; validation=nothing)
+    validation === nothing ||
+        validation.report === report ||
+        throw(ArgumentError("comparison requires validation of this report"))
+    checks = collect(
+        (validation === nothing ? _validation(nothing, report, Analytic()) : validation).checks,
+    )
     return _compare(report.problem.beliefs, collect(report.results), checks)
 end
 
 function _compare(beliefs, results, checks)
     feasible = findall(eachindex(results)) do i
-        results[i].error === nothing &&
-            all(c -> c.status in (:satisfied, :target), checks[i])
+        results[i].error === nothing && _acceptable(results[i].candidate, checks[i])
     end
     ids = [results[i].id for i in feasible]
     isempty(ids) &&
         return (; feasible=ids, dominates=[], ties=[], incomparable=[], unresolved=[])
     soft = findall(b -> b isa Approximate, beliefs)
     scores = map(feasible) do i
-        [abs(checks[i][j].estimate.value-beliefs[j].target)/beliefs[j].scale for j in soft]
+        [
+            checks[i][j].status == :pending ? nothing :
+            sqrt(_discrepancy(beliefs[j], checks[i][j].estimate.value)) for j in soft
+        ]
     end
     uncertain = map(feasible) do i
         any(soft) do j
             estimate = checks[i][j].estimate
+            estimate === nothing && return false
             estimate.lower != estimate.upper ||
                 !(estimate.evidence in (:analytic, :certified, :statistical))
         end
@@ -142,6 +224,9 @@ function _compare(beliefs, results, checks)
         ntuple(_ -> Tuple{eltype(ids),eltype(ids)}[], 4)
     for i in eachindex(feasible), j in (i+1):length(feasible)
         pair = (ids[i], ids[j])
+        results[feasible[i]].candidate.scope == results[feasible[j]].candidate.scope ||
+            continue
+        map(isnothing, scores[i]) == map(isnothing, scores[j]) || continue
         if uncertain[i] || uncertain[j]
             push!(unresolved, pair)
         elseif scores[i] == scores[j]
@@ -157,4 +242,6 @@ function _compare(beliefs, results, checks)
     (; feasible=ids, dominates, ties, incomparable, unresolved)
 end
 
-_dominates(a, b) = all(x <= y for (x, y) in zip(a, b)) && any(x < y for (x, y) in zip(a, b))
+_dominates(a, b) =
+    all(x === nothing || x <= y for (x, y) in zip(a, b)) &&
+    any(x !== nothing && x < y for (x, y) in zip(a, b))

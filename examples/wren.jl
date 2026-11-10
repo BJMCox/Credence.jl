@@ -1,23 +1,22 @@
-# # [A joint prior in Wren](@id wren-tutorial)
+# # [Using an elicited prior in Wren](@id wren-tutorial)
 #
-# Fit a joint prior for two correlated coefficients and a positive observation scale.
-# Pass the selected native measure into one Wren prior site, preserving coefficient dependence.
+# This example uses an elicited prior in a Normal regression. The parameters are the
+# intercept `beta[1]`, slope `beta[2]`, and residual standard deviation `sigma`.
+# We fit their prior to expert judgments, then observe `y = 0.4` at `x = 2`.
 #
-# Run from the package directory with Julia 1.13 or later:
+# Run the example from the package directory with Julia 1.13 or later:
 #
 # ```sh
 # julia --project=test/integration -e 'using Pkg; Pkg.instantiate()'
 # julia --project=test/integration examples/wren.jl
 # ```
 #
-# Wren is currently private, so running this example requires repository access.
-# Its environment pins Wren, Plaice, and MeasureBase separately from the core package.
-#
-# ## Define a joint family
-#
+# The environment pins development versions of Wren, Plaice, and MeasureBase.
+# Installing Wren requires access to its private repository.
+
 using Credence
 using MeasureBase: MeasureBase
-using Distributions: Normal, MvNormal, LogNormal, mean
+using Distributions: Normal, MvNormal, LogNormal
 using Plaice
 using PDMats
 using Optimization, OptimizationOptimJL
@@ -26,53 +25,60 @@ import WrenCore
 import Enzyme
 using Random: Xoshiro
 
+# ## Define the prior
+#
+# The coefficients have a bivariate Normal prior with fitted mean `p.beta` and fixed
+# covariance `covariance`. Independently, `sigma` has a LogNormal prior with fitted
+# log location `p.log_sigma` and fixed log standard deviation 0.4.
+# Thus fitting changes three location parameters. The covariance and spread are family assumptions.
+
 covariance = [1.0 0.4; 0.4 0.8]
 function build_prior(p)
     MeasureBase.productmeasure((
-        beta=MeasureBase.asmeasure(MvNormal(p[1:2], covariance)),
-        sigma=MeasureBase.asmeasure(LogNormal(p[3], 0.4)),
+        beta=MeasureBase.asmeasure(MvNormal(p.beta, covariance)),
+        sigma=MeasureBase.asmeasure(LogNormal(p.log_sigma, 0.4)),
     ))
 end
-candidate = Candidate(:joint, build_prior, [0.0, 0.0, 0.0])
+candidate = Candidate(:joint, build_prior, ((beta=zeros(2), log_sigma=0.0),))
 
-# ## Fit the expert's targets
+# The builder returns a named product measure with fields `beta` and `sigma`.
+# `Candidate` provides its identifier and starting parameter record.
 #
-# Keep the coefficient covariance fixed. Fit their means and the log of the scale's median.
-# A `Statistic` callback reads each property from the native product measure.
+# ## Fit the judgments
+#
+# Suppose the expert gives mean 0.2 for the intercept, mean -0.1 for the slope, and
+# median `exp(-0.3)`, approximately 0.741, for `sigma`. The targets below use scale 1.
+# The vector mean target contributes the average squared error across its two entries.
 
 beliefs = (
-    Approximate(
-        :first_coefficient,
-        Statistic(p -> mean(MeasureBase.marginals(p).beta)[1]),
-        0.2;
-        scale=1.0,
-        importance=1.0,
-    ),
-    Approximate(
-        :second_coefficient,
-        Statistic(p -> mean(MeasureBase.marginals(p).beta)[2]),
-        -0.1;
-        scale=1.0,
-        importance=1.0,
-    ),
-    Approximate(
-        :log_scale,
-        Statistic(p -> log(evaluate(Quantile(0.5), MeasureBase.marginals(p).sigma).value)),
-        -0.3;
-        scale=1.0,
-        importance=1.0,
-    ),
+    :beta => (Approximate(:mean, Mean(), [0.2, -0.1]; scale=1.0),),
+    :sigma => (Approximate(:median, Quantile(0.5), exp(-0.3); scale=1.0),),
 )
 problem = Elicitation(beliefs, [candidate])
 report = fit(Xoshiro(1001), problem, NelderMead(); maxiters=3000, g_tol=1e-14)
 validation = validate(Xoshiro(1002), report)
-selection = select(report, (:joint, 1); validation, rationale="Expert-selected joint prior")
-prior = measure(selection)
+display(validation.checks)
 
-# ## Use one joint prior site
+# These targets correspond to `p.beta = [0.2, -0.1]` and `p.log_sigma = -0.3`.
+# Check the achieved statistics in `validation.checks`. Their status is `:target` because
+# the beliefs specify approximate targets. Selection records acceptance of this fit and its assumptions.
+
+selection = select(
+    report,
+    (:joint, 1);
+    validation,
+    rationale="The fitted means and scale median match the elicited targets under the agreed covariance and independence assumptions.",
+)
+prior = measure(selection)
+display(rand(Xoshiro(1004), prior))
+
+# A draw from `prior` is a named tuple containing `beta` and `sigma`.
 #
-# Plaice maps the named product to unconstrained coordinates for Wren.
-# The coefficient chart preserves the original coefficients. The positive scale uses a log chart.
+# ## Condition on an observation
+#
+# At `x = 2`, the conditional mean is `beta[1] + 2 * beta[2]`.
+# The statement `theta ~ prior` draws the joint parameter tuple, preserving coefficient
+# dependence. The observation statement supplies the Normal likelihood for `y`.
 
 @wren function regression(prior, y)
     theta ~ prior
@@ -81,13 +87,18 @@ end
 
 model = regression(prior, 0.4)
 
-# ## Sample with NUTS
+# Plaice maps the prior to the coordinates used for inference: the two coefficient values
+# and `log(sigma)`. Wren includes the transformation Jacobian when evaluating the density.
 #
-# This model reads its fixed prior without mutating it. Elide that copy alone to work around
-# [Enzyme #3527](https://github.com/EnzymeAD/Enzyme.jl/issues/3527), related to
+# ## Sample the posterior
+#
+# NUTS uses Enzyme to differentiate the posterior log density. The pinned Enzyme version
+# has a copy issue for this measure, tracked in
+# [Enzyme #3527](https://github.com/EnzymeAD/Enzyme.jl/issues/3527) and
 # [#3561](https://github.com/EnzymeAD/Enzyme.jl/issues/3561).
-# This uses the pinned Wren version's internal API. Wren can mutate other model arguments,
-# so copies of mutable work buffers must remain enabled.
+# This model reads `prior` without mutation, so its defensive copy can be disabled through
+# Wren's internal API. The remaining arguments keep their copy settings.
+
 copies = filter(!=(:prior), WrenCore._copied_args(model))
 model = WrenCore._with_copied_args(model, copies)
 chain = nuts(
@@ -100,5 +111,6 @@ chain = nuts(
 )
 display(size(chain))
 
-# `chain` is ready for use as a FlexiChains chain. The 200 retained draws illustrate the
-# interface; assess convergence and Monte Carlo error before using a posterior estimate.
+# `chain` contains 200 posterior draws in one FlexiChains chain, conditional on `y = 0.4`.
+# Each draw contains `theta`, with its coefficient vector and residual standard deviation.
+# Assess convergence and Monte Carlo error before reporting posterior estimates.

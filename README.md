@@ -6,12 +6,13 @@
 
 Expert-guided prior elicitation for Julia.
 
-State probability, quantile, mean, or standard-deviation beliefs, compare candidate prior
-families, and select a prior explicitly. Credence keeps the alternatives and validation
-alongside the selected MeasureBase measure.
+Credence fits scalar and joint prior families to judgments about probabilities, quantiles,
+means, and standard deviations. The expert compares fitted candidates and records a
+selection. Priors use MeasureBase, with fitting reports and validation retained separately.
 
-The current prototype supports scalar priors for a single expert. Optimization.jl adds
-numerical fitting. Plaice support lets selected measures enter Wren models as joint priors.
+The prototype supports elicitation from a single expert. Parameter references group beliefs
+about scalars, arrays, joint quantities, and derived quantities. Optimization.jl provides
+numerical fitting. Plaice connects selected joint priors to Wren models.
 
 ## Installation
 
@@ -51,7 +52,8 @@ rand(Xoshiro(3), prior^5)
 ```
 
 Here `fit` evaluates the declared parameter points. The
-[scalar fitting example](examples/scalar.jl) fits Normal and Student-t families to expert quartiles.
+[signal-background example](examples/scalar.jl) compares prior families for six model hyperparameters,
+revises a judgment, and examines prior predictions.
 
 ## Documentation and support
 
