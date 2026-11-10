@@ -1,4 +1,8 @@
-"A belief's evaluated value, uncertainty, status, and any evaluation error."
+"""
+    Check
+
+A belief's evaluated value, uncertainty, status, and any evaluation error.
+"""
 struct Check{I,E,X}
     id::I
     estimate::E
@@ -6,7 +10,11 @@ struct Check{I,E,X}
     error::X
 end
 
-"Fresh belief checks tied to one fit report."
+"""
+    Validation
+
+Fresh belief checks tied to one fit report.
+"""
 struct Validation{R,C,P}
     report::R
     checks::C
@@ -39,7 +47,11 @@ function _check(belief, prior, plan, rng)
     end
 end
 
-"Reevaluate fixed results. MonteCarlo allocates alpha across all hard checks in this report."
+"""
+    validate(rng, report; plan=Analytic())
+
+Reevaluate fixed results. `MonteCarlo` allocates alpha across all hard checks in this report.
+"""
 function validate(rng::Union{AbstractRNG,GenContext}, report::FitReport; plan=Analytic())
     _validation(rng, report, plan)
 end
@@ -68,7 +80,11 @@ struct Selection{R,V,I,N}
     rationale::N
 end
 
-"Select one concrete result as a reference or accepted prior, preserving its validation."
+"""
+    select(report, result_id; role=:accepted, validation=nothing, rationale)
+
+Select one concrete result as a reference or accepted prior, preserving its validation.
+"""
 function select(report::FitReport, result_id; role=:accepted, validation=nothing, rationale)
     role in (:reference, :accepted) ||
         throw(ArgumentError("selection role must be :reference or :accepted"))
@@ -86,10 +102,18 @@ function select(report::FitReport, result_id; role=:accepted, validation=nothing
     Selection(report, validation, index, role, rationale)
 end
 
-"Return the selected native MeasureBase measure, separate from its fitting report."
+"""
+    measure(selection)
+
+Return the selected native MeasureBase measure, separate from its fitting report.
+"""
 measure(selection::Selection) = selection.report.results[selection.index].measure
 
-"Compare feasible results by per-belief discrepancies, retaining ties and incomparability."
+"""
+    compare(report)
+
+Compare feasible results by per-belief discrepancies, retaining ties and incomparability.
+"""
 function compare(report::FitReport)
     checks = collect(_validation(nothing, report, Analytic()).checks)
     return _compare(report.problem.beliefs, collect(report.results), checks)

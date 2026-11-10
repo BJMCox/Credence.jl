@@ -1,5 +1,20 @@
-# Run with the integration environment:
+# # [A joint prior in Wren](@id wren-tutorial)
+#
+# Fit a joint prior for two correlated coefficients and a positive observation scale.
+# Pass the selected native measure into one Wren prior site, preserving coefficient dependence.
+#
+# Run from the package directory with Julia 1.13 or later:
+#
+# ```sh
+# julia --project=test/integration -e 'using Pkg; Pkg.instantiate()'
 # julia --project=test/integration examples/wren.jl
+# ```
+#
+# This example runs in the integration CI job. Its environment pins the supported Wren,
+# Plaice, and MeasureBase development versions separately from the core package.
+#
+# ## Define a joint family
+#
 using Credence
 using MeasureBase: MeasureBase
 using Distributions: Normal, MvNormal, LogNormal, mean
@@ -19,6 +34,11 @@ function build_prior(p)
     ))
 end
 candidate = Candidate(:joint, build_prior, [0.0, 0.0, 0.0])
+
+# ## Fit the expert's targets
+#
+# Keep the coefficient covariance fixed. Fit their means and the log of the scale's median.
+# A `Statistic` callback reads each property from the native product measure.
 
 beliefs = (
     Approximate(
@@ -49,14 +69,25 @@ validation = validate(Xoshiro(1002), report)
 selection = select(report, (:joint, 1); validation, rationale="Expert-selected joint prior")
 prior = measure(selection)
 
+# ## Use one joint prior site
+#
+# Plaice maps the named product to unconstrained coordinates for Wren.
+# The coefficient chart preserves the original coefficients. The positive scale uses a log chart.
+
 @wren function regression(prior, y)
     theta ~ prior
     @observe y ~ Normal(theta.beta[1] + 2 * theta.beta[2], theta.sigma)
 end
 
 model = regression(prior, 0.4)
-# This model only reads its fixed prior. Elide that copy alone to avoid Enzyme #3527.
-# This uses the internal API of the pinned Wren version, not a general no-copy policy.
+
+# ## Sample with NUTS
+#
+# This model reads its fixed prior without mutating it. Elide that copy alone to work around
+# [Enzyme #3527](https://github.com/EnzymeAD/Enzyme.jl/issues/3527), related to
+# [#3561](https://github.com/EnzymeAD/Enzyme.jl/issues/3561).
+# This uses the pinned Wren version's internal API. Wren can mutate other model arguments,
+# so copies of mutable work buffers must remain enabled.
 copies = filter(!=(:prior), WrenCore._copied_args(model))
 model = WrenCore._with_copied_args(model, copies)
 chain = nuts(
@@ -67,3 +98,7 @@ chain = nuts(
     reduce_copies=false,
     progress=false,
 )
+display(size(chain))
+
+# `chain` is ready for use as a FlexiChains chain. The 200 retained draws illustrate the
+# interface; assess convergence and Monte Carlo error before using a posterior estimate.

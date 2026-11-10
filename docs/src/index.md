@@ -1,20 +1,29 @@
 # Credence.jl
 
-```@docs
-Credence
+Credence turns an expert's beliefs into candidate prior distributions. State probability,
+quantile, mean, or spread beliefs, compare several families, then select a prior explicitly.
+The result is a native MeasureBase measure that can enter a Wren model.
+
+This is an initial prototype for a single expert. Candidate comparison supports expert
+judgment. It does not choose a family for you.
+
+## Installation
+
+Credence is not registered. From a source checkout, install its pinned development dependencies:
+
+```sh
+julia --project=. dev/setup.jl
 ```
 
-## Prototype workflow
+The core supports Julia 1.10 and later. Use Julia 1.13 or later for the example environments,
+which use Pkg's source pins for the development MeasureBase and Wren APIs.
 
-Define beliefs with `Hard` requirements or `Approximate` targets. Supply `Candidate` builders
-that return normalized MeasureBase measures, then construct an `Elicitation` problem.
+## Check a belief
 
-`fit(rng, problem)` evaluates the declared parameter points. Loading Optimization.jl adds
-`fit(rng, problem, algorithm; ...)` for numerical fitting. Multiple approximate targets need
-explicit importance weights for scalar optimization. Hard beliefs become solver constraints.
-Use a constrained optimizer when requirements are present.
+Suppose the prior's median should lie between -0.1 and 0.1. Compare a standard Normal
+and a standard Exponential distribution at their declared parameter points:
 
-```@example core
+```@example start
 using Credence, MeasureBase, Random
 
 belief = Hard(:median, Quantile(0.5), Between(-0.1, 0.1))
@@ -22,58 +31,49 @@ candidates = (
     Candidate(:normal, _ -> StdNormal(), [0.0]),
     Candidate(:exponential, _ -> StdExponential(), [0.0]),
 )
-report = fit(Xoshiro(1), Elicitation((belief,), candidates))
+problem = Elicitation((belief,), candidates)
+report = fit(Xoshiro(1), problem)
 validation = validate(Xoshiro(2), report)
-choice =
-    select(report, (:normal, 1); validation, rationale="Median lies in the stated range")
-rand(Xoshiro(3), measure(choice)^5)
+
+map(validation.checks) do checks
+    check = only(checks)
+    (; median=check.estimate.value, status=check.status)
+end
 ```
 
-`compare(report)` retains dominance, ties, tradeoffs, and unresolved comparisons.
-`validate(rng, report)` checks the fixed results. `select` requires explicit validation and
-a rationale before accepting a prior. `measure(selection)` returns the native measure.
+`fit(rng, problem)` evaluates the supplied points. It does not optimize them. The Normal
+median satisfies the requirement. The Exponential median does not.
 
-`Probability(a,b)` means `P(a < X <= b)`, including for discrete laws.
-`Quantile(p)` uses the lower quantile, preserving jumps and support gaps.
-`Statistic(f; label)` supplies an analytic oracle for other properties of a joint prior.
+## Select and use a prior
 
-## Evidence and limits
+Selection records your rationale and retains the validation that supports acceptance:
 
-`Analytic()` calls measure operations. `MonteCarlo(n; alpha)` validates event probabilities
-with Hoeffding bounds from independent draws, dividing the error budget across this report's
-hard checks. It requires a valid independent sampler and an explicit RNG.
-Repeated adaptive validation needs a separate error budget. Seeds remain caller-owned.
-Estimated diagnostics cannot certify hard constraints, and uncertain comparisons stay unresolved.
-
-Solver return codes are kept separately from validation. A failed start remains in the report.
-`Evaluate()` enumerates only supplied points. Numerical fitting retains the supplied starts'
-solutions, without claiming a complete feasible region or Pareto frontier.
-Treat report measures and captured callbacks as read-only after validation.
-
-The Optimization extension defaults to deterministic solvers. A stochastic backend needs
-its own explicitly configured RNG, passed through the solver's options.
-
-## Wren and Plaice
-
-Loading Plaice activates vectorization and support charts for MeasureBase's wrapped laws
-and named products. Use one joint prior site in Wren to retain coefficient dependence.
-The integration checks vector round trips, Jacobians, and gradients with ForwardDiff and Enzyme,
-then runs Enzyme NUTS. It does not claim general smooth charts for arbitrary weighted or mixed measures.
-
-The Enzyme example avoids [a deepcopy-rule failure](https://github.com/EnzymeAD/Enzyme.jl/issues/3527)
-by removing only its fixed, read-only prior from Wren's copy set. The related
-[mixed-return adjoint issue](https://github.com/EnzymeAD/Enzyme.jl/issues/3561) also needs attention upstream.
-The workaround uses the pinned Wren version's internal API. It does not disable copies of mutable arguments:
-Wren can write latent values into those buffers, and removing their copies can lose gradients.
-
-## Planned work
-
-Predictive fitting, formula macros, tilting, marginal locks, uncertainty propagation, persistence,
-notebook interaction, and FlatPPL export belong to the full design and remain unimplemented.
-
-## API
-
-```@autodocs
-Modules = [Credence]
-Private = false
+```@example start
+selection = select(
+    report,
+    (:normal, 1);
+    validation,
+    rationale="The median satisfies the expert's stated range.",
+)
+prior = measure(selection)
+rand(Xoshiro(3), prior^5)
 ```
+
+`measure(selection)` returns the selected measure itself. The report stays separate from
+the prior. Treat report measures and captured callbacks as read-only after validation.
+
+## Fit and compare families
+
+Loading Optimization.jl adds `fit(rng, problem, algorithm; ...)`. The
+[family comparison tutorial](@ref scalar-tutorial) fits Normal and Student-t candidates
+to the same quartiles and examines their different tails.
+
+The [Wren tutorial](@ref wren-tutorial) fits a joint coefficient and scale prior, preserves
+coefficient dependence through Plaice, then samples a posterior with NUTS.
+
+[Beliefs and validation](@ref validation-guide) explains hard requirements, approximate
+targets, numerical evidence, and acceptance. The [API reference](@ref api-reference)
+lists the available constructors and operations.
+
+Predictive fitting, formula macros, tilting, marginal locks, judgment-uncertainty propagation,
+portable persistence, interactive controls, and FlatPPL export remain planned.

@@ -1,6 +1,10 @@
 abstract type AbstractStatistic end
 
-"An evaluated statistic, its enclosure, and the source of its evidence."
+"""
+    Estimate(value; lower=value, upper=value, evidence=:analytic)
+
+An evaluated statistic, its enclosure, and the source of its evidence.
+"""
 struct Estimate{V,L,U}
     value::V
     lower::L
@@ -19,7 +23,13 @@ struct IntervalEvent{A,B}
 end
 (event::IntervalEvent)(x) = event.lower < x <= event.upper
 
-"`Probability(a, b)` denotes P(a < X <= b). A predicate requires a sampling evaluation plan."
+"""
+    Probability(a, b)
+    Probability(predicate)
+
+The probability P(a < X <= b), or an event defined by a predicate.
+A predicate requires a sampling evaluation plan.
+"""
 struct Probability{F} <: AbstractStatistic
     event::F
 end
@@ -28,7 +38,11 @@ function Probability(lower::Real, upper::Real)
     Probability(IntervalEvent(lower, upper))
 end
 
-"The lower quantile at probability p, with 0 < p < 1."
+"""
+    Quantile(p)
+
+The lower quantile at probability p, with 0 < p < 1.
+"""
 struct Quantile{T} <: AbstractStatistic
     p::T
     function Quantile(p::Real)
@@ -37,22 +51,42 @@ struct Quantile{T} <: AbstractStatistic
     end
 end
 
-"The population mean, when it exists."
+"""
+    Mean()
+
+The population mean, when it exists.
+"""
 struct Mean <: AbstractStatistic end
-"The population standard deviation, when it exists."
+"""
+    Std()
+
+The population standard deviation, when it exists.
+"""
 struct Std <: AbstractStatistic end
 
-"A user-supplied analytic statistic `f(measure)`, optionally returning an Estimate."
+"""
+    Statistic(f; label=:custom)
+
+A user-supplied analytic statistic `f(measure)`, optionally returning an `Estimate`.
+"""
 struct Statistic{F,L} <: AbstractStatistic
     f::F
     label::L
 end
 Statistic(f; label=:custom) = Statistic(f, label)
 
-"Evaluate through analytic measure operations, without sampling."
+"""
+    Analytic()
+
+Evaluate through analytic measure operations, without sampling.
+"""
 struct Analytic end
 
-"Validate event probabilities from n independent draws with failure probability alpha."
+"""
+    MonteCarlo(n; alpha=0.01)
+
+Validate event probabilities from n independent draws with failure probability alpha.
+"""
 struct MonteCarlo{T}
     n::Int
     alpha::T
@@ -63,7 +97,11 @@ struct MonteCarlo{T}
     end
 end
 
-"Evaluate a statistic under a normalized MeasureBase measure."
+"""
+    evaluate(statistic, prior; plan=Analytic(), rng=nothing)
+
+Evaluate a statistic under a normalized MeasureBase measure.
+"""
 function evaluate(statistic::AbstractStatistic, prior; plan=Analytic(), rng=nothing)
     isone(MeasureBase.massof(prior)) || throw(ArgumentError("candidate must be normalized"))
     _evaluate(statistic, prior, plan, rng)

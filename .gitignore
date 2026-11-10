@@ -1,6 +1,8 @@
 Manifest*.toml
 docs/build/
 docs/site/
+docs/src/tutorials/
+docs/src/assets/logo.svg
 *.cov
 *.mem
 .DS_Store

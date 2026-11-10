@@ -1,4 +1,8 @@
-"A MeasureBase family builder with explicit starts and optional parameter bounds."
+"""
+    Candidate(id, build, starts; lower=nothing, upper=nothing)
+
+A MeasureBase family builder with explicit starts and optional parameter bounds.
+"""
 struct Candidate{I,F,S,L,U}
     id::I
     build::F
@@ -29,7 +33,11 @@ function Candidate(id, build, starts; lower=nothing, upper=nothing)
     Candidate(id, build, points, lo, hi)
 end
 
-"An immutable collection of beliefs and candidate definitions."
+"""
+    Elicitation(beliefs, candidates)
+
+An immutable collection of beliefs and candidate definitions.
+"""
 struct Elicitation{B,C}
     beliefs::B
     candidates::C
@@ -43,10 +51,18 @@ struct Elicitation{B,C}
     end
 end
 
-"Evaluate the declared parameter points without optimizing or assigning probability weights."
+"""
+    Evaluate()
+
+Evaluate the declared parameter points without optimizing or assigning probability weights.
+"""
 struct Evaluate end
 
-"One retained parameter point and its native measure, solver result, or failure."
+"""
+    FitResult
+
+One retained parameter point and its native measure, solver result, or failure.
+"""
 struct FitResult{I,C,P,M,S,E}
     id::I
     candidate::C
@@ -56,7 +72,11 @@ struct FitResult{I,C,P,M,S,E}
     error::E
 end
 
-"All retained candidate results for one elicitation problem."
+"""
+    FitReport
+
+All retained candidate results for one elicitation problem.
+"""
 struct FitReport{P,R}
     problem::P
     results::R
@@ -86,7 +106,11 @@ _failure(candidate, index, error) = FitResult(
     error,
 )
 
-"Evaluate declared parameter points, or fit through an optional optimizer extension."
+"""
+    fit(rng, problem; plan=Evaluate())
+
+Evaluate declared parameter points, or fit through an optional optimizer extension.
+"""
 function fit(rng::Union{AbstractRNG,GenContext}, problem::Elicitation; plan=Evaluate())
     _fit(rng, problem, plan)
 end

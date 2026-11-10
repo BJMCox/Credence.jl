@@ -27,7 +27,9 @@ jobs:
           include("dev/setup.jl")
           Pkg.develop(; path=".")
           Pkg.instantiate()
-      - name: Build and deploy documentation
+      - name: Build documentation
         run: julia --color=yes --project=docs docs/make.jl
+      - name: Deploy documentation
+        run: julia --color=yes --project=docs docs/deploy.jl
         env:
           GITHUB_TOKEN: ${{ github.token }}

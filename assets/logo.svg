@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-labelledby="title">
+  <title id="title">Credence: alternative prior distributions</title>
+  <g fill="none" stroke-width="7" stroke-linecap="round">
+    <path stroke="#9558b2" d="M14 126C42 126 46 33 80 33S118 126 146 126"/>
+    <path stroke="#389826" d="M14 126C34 126 36 64 62 64S104 126 146 126"/>
+    <path stroke="#cb3c33" d="M14 126C54 126 66 89 101 89S128 126 146 126"/>
+  </g>
+</svg>

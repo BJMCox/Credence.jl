@@ -1,14 +1,26 @@
 abstract type Relation end
 
-"Require a statistic to be at least the stated value."
+"""
+    AtLeast(value)
+
+Require a statistic to be at least the stated value.
+"""
 struct AtLeast{T} <: Relation
     value::T
 end
-"Require a statistic to be at most the stated value."
+"""
+    AtMost(value)
+
+Require a statistic to be at most the stated value.
+"""
 struct AtMost{T} <: Relation
     value::T
 end
-"Require a statistic to lie in the closed interval [lower, upper]."
+"""
+    Between(lower, upper)
+
+Require a statistic to lie in the closed interval [lower, upper].
+"""
 struct Between{L,U} <: Relation
     lower::L
     upper::U
@@ -17,7 +29,11 @@ struct Between{L,U} <: Relation
         new{typeof(lower),typeof(upper)}(lower, upper)
     end
 end
-"Require exact equality. Use Between to express an expert's tolerance."
+"""
+    EqualTo(value)
+
+Require exact equality. Use `Between` to express an expert's tolerance.
+"""
 struct EqualTo{T} <: Relation
     value::T
 end
@@ -26,14 +42,22 @@ _bounds(r::AtMost) = (-Inf, r.value)
 _bounds(r::Between) = (r.lower, r.upper)
 _bounds(r::EqualTo) = (r.value, r.value)
 
-"A named hard requirement on a statistic."
+"""
+    Hard(id, statistic, relation)
+
+A named hard requirement on a statistic.
+"""
 struct Hard{I,S<:AbstractStatistic,R<:Relation}
     id::I
     statistic::S
     relation::R
 end
 
-"An approximate point target with an explicit scale and optional importance weight."
+"""
+    Approximate(id, statistic, target; scale, importance=nothing)
+
+An approximate point target with an explicit scale and optional importance weight.
+"""
 struct Approximate{I,S<:AbstractStatistic,T,C,W}
     id::I
     statistic::S

@@ -58,3 +58,5 @@ jobs:
         run: julia --project=test/integration -e 'using Pkg; Pkg.instantiate()'
       - name: Test integration
         run: julia --project=test/integration test/integration/runtests.jl
+      - name: Run Wren example
+        run: julia --project=test/integration examples/wren.jl

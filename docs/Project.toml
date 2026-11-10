@@ -1,16 +1,28 @@
 [deps]
 Credence = "178d0c97-14ee-4441-973b-23c323c9f53d"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+DocumenterCodeBlocks = "b6400b83-267f-4b55-9fd8-bffc853bdfd8"
 HeterogeneousComputing = "2182be2a-124f-4a91-8389-f06db5907a21"
+Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
 MeasureBase = "fa1605e6-acd5-459c-a1e6-7e635759db14"
+Optimization = "7f7a1694-90dd-40f0-9382-eb1efda571ba"
+OptimizationOptimJL = "36348300-93cb-4f02-beb5-3c3902f8871e"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [sources]
 Credence = {path = ".."}
-MeasureBase = {url = "https://github.com/JuliaMath/MeasureBase.jl", rev = "ad53c244f905d57c8f35c15fe1da0ef163023096"}
-HeterogeneousComputing = {url = "https://github.com/oschulz/HeterogeneousComputing.jl", rev = "18f24c9b7b7ad92e89cabb96cddfd4ef12d4565d"}
+HeterogeneousComputing = {rev = "18f24c9b7b7ad92e89cabb96cddfd4ef12d4565d", url = "https://github.com/oschulz/HeterogeneousComputing.jl"}
+MeasureBase = {rev = "ad53c244f905d57c8f35c15fe1da0ef163023096", url = "https://github.com/JuliaMath/MeasureBase.jl"}
 
 [compat]
-Documenter = "1"
+Distributions = "0.25"
+Documenter = "1.18"
+DocumenterCodeBlocks = "1.5"
 HeterogeneousComputing = "0.3"
+Literate = "2"
 MeasureBase = "0.15"
+Optimization = "4, 5"
+OptimizationOptimJL = "0.4"
+Random = "1"
 julia = "1.10"
