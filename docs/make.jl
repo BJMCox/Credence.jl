@@ -26,14 +26,14 @@ cp(
 makedocs(;
     root=@__DIR__,
     sitename="Credence.jl",
-    repo=Documenter.Remotes.GitHub("JuliaBayes", "Credence.jl"),
+    repo=Documenter.Remotes.GitHub("BJMCox", "Credence.jl"),
     modules=[Credence],
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://juliabayes.org/Credence.jl/stable/",
+        canonical="https://bjmcox.github.io/Credence.jl/stable/",
         edit_link="main",
         inventory_version="",
-        assets=["assets/logo.css"],
+        assets=["assets/logo.css", "assets/favicon.ico"],
     ),
     pages=[
         "Getting started" => "index.md",

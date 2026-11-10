@@ -12,6 +12,8 @@ judgment. It does not choose a family for you.
 Credence is not registered. From a source checkout, install its pinned development dependencies:
 
 ```sh
+git clone https://github.com/BJMCox/Credence.jl.git
+cd Credence.jl
 julia --project=. dev/setup.jl
 ```
 
