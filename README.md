@@ -1,55 +1,70 @@
 # Credence.jl
 
-<a href="https://bjmcox.github.io/Credence.jl/stable/"><img src="/docs/src/assets/logo.svg" align="right" alt="Credence.jl logo" style="height: 140px;"></a>
+[![CI](https://github.com/BJMCox/Credence.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/BJMCox/Credence.jl/actions/workflows/CI.yml)
+[![Docs](https://img.shields.io/badge/docs-guide-blue.svg)](docs/src/index.md) <a href="docs/src/index.md"><img src="/docs/src/assets/logo.svg" align="right" alt="Credence.jl logo" style="height: 140px;"></a>
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 Expert-guided prior elicitation for Julia.
 
-Credence is an initial prototype. It fits scalar prior families to probability, quantile,
-mean, and standard-deviation beliefs. It keeps candidate alternatives, checks hard requirements,
-and returns an explicitly selected MeasureBase measure.
+State probability, quantile, mean, or standard-deviation beliefs, compare candidate prior
+families, and select a prior explicitly. Credence keeps the alternatives and validation
+alongside the selected MeasureBase measure.
 
-Optimization.jl provides optional numerical fitting. Plaice support lets wrapped measures and
-named products enter Wren models as joint priors, preserving dependence and support transforms.
+The current prototype supports scalar priors for a single expert. Optimization.jl adds
+numerical fitting. Plaice support lets selected measures enter Wren models as joint priors.
 
-Start with the [documentation](docs/src/index.md), [scalar example](examples/scalar.jl),
-or [Wren example](examples/wren.jl). The tutorials use those runnable files as their source.
-The prototype targets pinned MeasureBase and HeterogeneousComputing development APIs.
+## Installation
 
-Run the scalar fitting example with Julia 1.13:
+Credence is not registered. Clone the repository and install its pinned development dependencies:
 
 ```sh
-julia --project=examples -e 'using Pkg; Pkg.instantiate()'
-julia --project=examples examples/scalar.jl
-```
-
-## Development
-
-Run the tests from the package directory:
-
-```sh
+git clone https://github.com/BJMCox/Credence.jl.git
+cd Credence.jl
 julia --project=. dev/setup.jl
-julia --project=. -e 'using Pkg; Pkg.test()'
 ```
 
-Build the documentation:
+The core supports Julia 1.10 and later. The example environments require Julia 1.13 or later.
 
-```sh
-julia --project=docs -e 'include("dev/setup.jl"); Pkg.develop(path=".")'
-julia --project=docs docs/make.jl
+## Quick start
+
+Start Julia with `julia --project=.` from the checkout. Check which of two fixed priors
+satisfies a requirement on the median, then select one:
+
+```julia
+using Credence, MeasureBase, Random
+
+belief = Hard(:median, Quantile(0.5), Between(-0.1, 0.1))
+candidates = (
+    Candidate(:normal, _ -> StdNormal(), [0.0]),
+    Candidate(:exponential, _ -> StdExponential(), [0.0]),
+)
+report = fit(Xoshiro(1), Elicitation((belief,), candidates))
+checks = validate(Xoshiro(2), report)
+selection = select(
+    report,
+    (:normal, 1);
+    validation=checks,
+    rationale="The standard Normal satisfies the median requirement.",
+)
+prior = measure(selection)
+rand(Xoshiro(3), prior^5)
 ```
 
-Run the Wren integration tests with Julia 1.13 or later and access to the private
-Wren repository:
+Here `fit` evaluates the declared parameter points. The
+[scalar fitting example](examples/scalar.jl) fits Normal and Student-t families to expert quartiles.
 
-```sh
-julia --project=test/integration -e 'using Pkg; Pkg.instantiate()'
-julia --project=test/integration test/integration/runtests.jl
-```
+## Documentation and support
 
-This prototype does not yet implement the full elicitation workflow. Formula macros, predictive
-fitting, tilting, marginal locks, judgment-uncertainty propagation, notebook controls, and FlatPPL
-export remain planned. Joint Wren inference is tested with ForwardDiff and Enzyme.
-The Enzyme example elides only its read-only prior's defensive copy to avoid
-[Enzyme #3527](https://github.com/EnzymeAD/Enzyme.jl/issues/3527), related to
-[#3561](https://github.com/EnzymeAD/Enzyme.jl/issues/3561). It uses the pinned Wren
-version's internal copy-selection API. Copies of mutable work buffers must remain enabled.
+Start with the [guide](docs/src/index.md), [beliefs and validation](docs/src/validation.md),
+or [API reference](docs/src/api.md). The [Wren example](examples/wren.jl) shows a joint prior
+and requires access to the private Wren repository.
+
+[Open an issue](https://github.com/BJMCox/Credence.jl/issues) for questions, bug reports,
+or feature requests.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, tests, documentation builds,
+and pull requests. [COLLABORATORS.md](COLLABORATORS.md) lists the package author and collaboration links.
+
+Credence uses the [Apache 2.0 license](LICENSE).
