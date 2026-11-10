@@ -62,7 +62,7 @@ struct FitReport{P,R}
     results::R
 end
 
-function _result(problem, candidate, index, parameters, prior, solver)
+function _result(candidate, index, parameters, prior, solver)
     if candidate.lower !== nothing
         all(parameters .>= candidate.lower) ||
             throw(ArgumentError("parameters lie below the candidate domain"))
@@ -77,16 +77,14 @@ function _result(problem, candidate, index, parameters, prior, solver)
         throw(ArgumentError("candidate measure must be normalized"))
     FitResult((candidate.id, index), candidate, Tuple(parameters), prior, solver, nothing)
 end
-function _failure(candidate, index, error)
-    FitResult(
-        (candidate.id, index),
-        candidate,
-        candidate.starts[index],
-        nothing,
-        nothing,
-        error,
-    )
-end
+_failure(candidate, index, error) = FitResult(
+    (candidate.id, index),
+    candidate,
+    candidate.starts[index],
+    nothing,
+    nothing,
+    error,
+)
 
 "Evaluate declared parameter points, or fit through an optional optimizer extension."
 function fit(rng::Union{AbstractRNG,GenContext}, problem::Elicitation; plan=Evaluate())
@@ -94,16 +92,9 @@ function fit(rng::Union{AbstractRNG,GenContext}, problem::Elicitation; plan=Eval
 end
 function _fit(rng, problem, ::Evaluate)
     results = map(problem.candidates) do candidate
-        map(enumerate(candidate.starts) |> Tuple) do (index, point)
+        map(Tuple(enumerate(candidate.starts))) do (index, point)
             try
-                _result(
-                    problem,
-                    candidate,
-                    index,
-                    point,
-                    candidate.build(collect(point)),
-                    nothing,
-                )
+                _result(candidate, index, point, candidate.build(collect(point)), nothing)
             catch error
                 error isa InterruptException && rethrow()
                 _failure(candidate, index, error)
@@ -112,14 +103,6 @@ function _fit(rng, problem, ::Evaluate)
     end
     FitReport(problem, Tuple(Iterators.flatten(results)))
 end
-
-_hard_beliefs(problem) = filter(b -> b isa Hard, problem.beliefs)
-function _hard_bounds(problem)
-    bounds = map(b -> _bounds(b.relation), _hard_beliefs(problem))
-    (collect(first.(bounds)), collect(last.(bounds)))
-end
-_hard_values(problem, prior) =
-    [evaluate(b.statistic, prior).value for b in _hard_beliefs(problem)]
 
 function _loss(problem, prior)
     soft = filter(b -> b isa Approximate, problem.beliefs)
@@ -131,20 +114,16 @@ function _loss(problem, prior)
             ),
         )
     end
-    weights = map(soft) do belief
-        if belief.importance === nothing
-            1
-        else
-            belief.importance
-        end
-    end
+    weights = map(b -> something(b.importance, 1), soft)
     maxweight = maximum(weights)
     iszero(maxweight) && return 0.0
-    total = 0.0
-    for (belief, weight) in zip(soft, weights)
-        iszero(weight) && continue
-        residual = (evaluate(belief.statistic, prior).value-belief.target) / belief.scale
-        total += (weight / maxweight) * residual^2
-    end
-    total
+    return sum(
+        map(soft, weights) do belief, weight
+            iszero(weight) && return 0.0
+            residual =
+                (evaluate(belief.statistic, prior).value-belief.target) / belief.scale
+            (weight / maxweight) * residual^2
+        end;
+        init=0.0,
+    )
 end

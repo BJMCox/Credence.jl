@@ -20,50 +20,42 @@ function Credence.fit(
     adtype=Optimization.NoAD(),
     kwargs...,
 )
-    lower_constraints, upper_constraints = Credence._hard_bounds(problem)
+    hard = filter(b -> b isa Hard, problem.beliefs)
+    constraints = if isempty(hard)
+        (;)
+    else
+        bounds = map(b -> Credence._bounds(b.relation), hard)
+        (; lcons=first.(bounds), ucons=last.(bounds))
+    end
     results = map(problem.candidates) do candidate
         objective = (parameters, _) -> Credence._loss(problem, candidate.build(parameters))
-        objective_function = if isempty(lower_constraints)
+        objective_function = if isempty(hard)
             Optimization.OptimizationFunction(objective, adtype)
         else
             function constraints!(values, parameters, _)
-                copyto!(values, Credence._hard_values(problem, candidate.build(parameters)))
+                prior = candidate.build(parameters)
+                values .= map(b -> evaluate(b.statistic, prior).value, hard)
                 return nothing
             end
             Optimization.OptimizationFunction(objective, adtype; cons=constraints!)
         end
-        lower = candidate.lower
-        if !isnothing(lower)
-            lower = collect(lower)
-        end
-        upper = candidate.upper
-        if !isnothing(upper)
-            upper = collect(upper)
+        lower, upper = map((candidate.lower, candidate.upper)) do bound
+            isnothing(bound) && return nothing
+            collect(bound)
         end
         map(enumerate(candidate.starts)) do (index, start)
             try
-                optimization_problem = if isempty(lower_constraints)
-                    Optimization.OptimizationProblem(
-                        objective_function,
-                        collect(start);
-                        lb=lower,
-                        ub=upper,
-                    )
-                else
-                    Optimization.OptimizationProblem(
-                        objective_function,
-                        collect(start);
-                        lb=lower,
-                        ub=upper,
-                        lcons=collect(lower_constraints),
-                        ucons=collect(upper_constraints),
-                    )
-                end
+                optimization_problem = Optimization.OptimizationProblem(
+                    objective_function,
+                    collect(start);
+                    lb=lower,
+                    ub=upper,
+                    map(collect, constraints)...,
+                )
                 solution =
                     Optimization.solve(optimization_problem, algorithm; kwargs...)
                 parameters = solution.u
                 return Credence._result(
-                    problem,
                     candidate,
                     index,
                     parameters,

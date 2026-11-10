@@ -42,6 +42,7 @@ end
     @test ((:normal, 1), (:normal, 3)) in comparison.ties
     @test ((:normal, 2), (:normal, 4)) in comparison.dominates
     @test length(report.results) == 4
+    @test all(isempty, compare(fit(Xoshiro(1), Elicitation((), ()))))
 end
 
 @testset "Failures and uncertainty remain visible" begin

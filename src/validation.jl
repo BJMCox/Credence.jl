@@ -44,7 +44,7 @@ function validate(rng::Union{AbstractRNG,GenContext}, report::FitReport; plan=An
     _validation(rng, report, plan)
 end
 function _validation(rng, report, plan)
-    nchecks = length(_hard_beliefs(report.problem)) * length(report.results)
+    nchecks = count(b -> b isa Hard, report.problem.beliefs) * length(report.results)
     per_check = if plan isa MonteCarlo && nchecks > 0
         MonteCarlo(plan.n; alpha=plan.alpha/nchecks)
     else
@@ -91,45 +91,46 @@ measure(selection::Selection) = selection.report.results[selection.index].measur
 
 "Compare feasible results by per-belief discrepancies, retaining ties and incomparability."
 function compare(report::FitReport)
-    checks = _validation(nothing, report, Analytic())
-    feasible = findall(eachindex(report.results)) do i
-        report.results[i].error === nothing &&
-            all(c -> c.status in (:satisfied, :target), checks.checks[i])
+    checks = collect(_validation(nothing, report, Analytic()).checks)
+    return _compare(report.problem.beliefs, collect(report.results), checks)
+end
+
+function _compare(beliefs, results, checks)
+    feasible = findall(eachindex(results)) do i
+        results[i].error === nothing &&
+            all(c -> c.status in (:satisfied, :target), checks[i])
     end
-    soft = findall(b -> b isa Approximate, report.problem.beliefs)
+    ids = [results[i].id for i in feasible]
+    isempty(ids) &&
+        return (; feasible=ids, dominates=[], ties=[], incomparable=[], unresolved=[])
+    soft = findall(b -> b isa Approximate, beliefs)
     scores = map(feasible) do i
-        [
-            abs(checks.checks[i][j].estimate.value-report.problem.beliefs[j].target)/report.problem.beliefs[j].scale
-            for j in soft
-        ]
+        [abs(checks[i][j].estimate.value-beliefs[j].target)/beliefs[j].scale for j in soft]
     end
-    dominates, ties, incomparable, unresolved = [], [], [], []
-    for i in eachindex(feasible), j in (i+1):length(feasible)
-        pair = (report.results[feasible[i]].id, report.results[feasible[j]].id)
-        uncertain = any((feasible[i], feasible[j])) do k
-            any(soft) do b
-                estimate = checks.checks[k][b].estimate
-                estimate.lower != estimate.upper ||
-                    !(estimate.evidence in (:analytic, :certified, :statistical))
-            end
+    uncertain = map(feasible) do i
+        any(soft) do j
+            estimate = checks[i][j].estimate
+            estimate.lower != estimate.upper ||
+                !(estimate.evidence in (:analytic, :certified, :statistical))
         end
-        if uncertain
+    end
+    dominates, ties, incomparable, unresolved =
+        ntuple(_ -> Tuple{eltype(ids),eltype(ids)}[], 4)
+    for i in eachindex(feasible), j in (i+1):length(feasible)
+        pair = (ids[i], ids[j])
+        if uncertain[i] || uncertain[j]
             push!(unresolved, pair)
         elseif scores[i] == scores[j]
             push!(ties, pair)
-        elseif all(scores[i] .<= scores[j]) && any(scores[i] .< scores[j])
+        elseif _dominates(scores[i], scores[j])
             push!(dominates, pair)
-        elseif all(scores[j] .<= scores[i]) && any(scores[j] .< scores[i])
+        elseif _dominates(scores[j], scores[i])
             push!(dominates, reverse(pair))
         else
             push!(incomparable, pair)
         end
     end
-    (;
-        feasible=[report.results[i].id for i in feasible],
-        dominates,
-        ties,
-        incomparable,
-        unresolved,
-    )
+    (; feasible=ids, dominates, ties, incomparable, unresolved)
 end
+
+_dominates(a, b) = all(x <= y for (x, y) in zip(a, b)) && any(x < y for (x, y) in zip(a, b))
