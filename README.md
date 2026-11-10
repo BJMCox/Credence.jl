@@ -13,9 +13,7 @@ quantities own separate belief groups. See the [input guide](docs/src/inputs.md)
 Optimization.jl provides optional numerical fitting. Plaice support lets wrapped measures and
 named products enter Wren models as joint priors, preserving dependence and support transforms.
 
-Start with the [programmatic example](examples/scalar.jl) or the
-[guided Julia REPL session](docs/src/tutorials/guided.md). Both fit, compare, validate,
-and explicitly select a prior. The [documentation](docs/src/index.md) explains the API,
+The [programmatic example](examples/scalar.jl) fits, compares, revises, validates, and selects a prior. The [documentation](docs/src/index.md) explains the API,
 and the [Wren example](examples/wren.jl) shows model integration.
 The workflows use a [rare-event signal and background model](examples/signal_background.jl)
 with six elicited hyperparameters, detector efficiencies, and five conditional background rates.

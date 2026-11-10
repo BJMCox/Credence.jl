@@ -70,16 +70,11 @@ the prior. Treat report measures and captured callbacks as read-only after valid
 
 ## Choose a workflow
 
-The [programmatic workflow](@ref scalar-tutorial) runs a recorded set of judgments and an
-explicit decision as a script. The [guided REPL session](@ref guided-tutorial) asks one
-question at a time, shows feedback, and revises an answer before accepting a prior.
-Both use the same constructors, fitting methods, validation, and selection rules for a
-[rare-event signal and background model](@ref rare-event-model). Six hyperparameters cover
-signal strength, line location, resolution, and background uncertainty. Five conditional
-background rates complete the hierarchy. Every hyperparameter has explicit support and elicited targets.
-
-Both workflows compare bounded Beta, LogNormal, and Normal families and record the
-expert's choice.
+The [programmatic tutorial](@ref scalar-tutorial) develops a complete elicitation example
+for a rare-event search. It defines the model and candidate families, records judgments,
+compares fits, revises a judgment, and selects a prior. Six hyperparameters describe signal
+strength, location, resolution, and background uncertainty. Five conditional background
+rates complete the hierarchy. The tutorial includes all model and plotting definitions.
 
 The [Wren tutorial](@ref wren-tutorial) fits a joint coefficient and scale prior, preserves
 coefficient dependence through Plaice, then samples a posterior with NUTS.

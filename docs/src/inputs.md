@@ -131,5 +131,4 @@ Use `sampling=MonteCarlo(n)` on `fit` or `validate` when analytic evaluation is 
 Sampled beliefs share joint draws, and derived quantities reuse their evaluated values.
 Fitting replays fixed random inputs. Validation uses a separate fresh batch and records its seed.
 
-The [programmatic workflow](@ref scalar-tutorial) and [guided session](@ref guided-tutorial)
-apply this input form to a complete scientific example.
+The [programmatic tutorial](@ref scalar-tutorial) applies these inputs to a complete scientific example.

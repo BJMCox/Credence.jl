@@ -3,7 +3,7 @@
 # Fit priors for a weak Gaussian line above an exponential background in five detectors.
 # The [model definition](@ref rare-event-model) contains the full Julia implementation,
 # units, support bounds, and hierarchical background model.
-# The [guided REPL session](@ref guided-tutorial) arrives at these same final judgments.
+# The example records judgments, compares families, revises one judgment, and selects a prior.
 #
 # Run from the package directory with Julia 1.13 or later:
 #
@@ -32,10 +32,10 @@ nothing # hide
 # Each positive quantity has a median and a 95% upper quantile. The location has 90%
 # probability between 124 and 126 keV. Rates use events/year and energy quantities use keV.
 
-beliefs = (
+initial_beliefs = (
     :S => (
         Approximate(:median, Quantile(0.5), 1.2; scale=1.0),
-        Approximate(:upper, Quantile(0.95), 3.5; scale=1.0),
+        Approximate(:upper, Quantile(0.95), 5.0; scale=1.0),
     ),
     :mu => (Approximate(:central, Probability(location_interval...), 0.9; scale=0.1),),
     :width => (
@@ -55,7 +55,8 @@ beliefs = (
         Approximate(:upper, Quantile(0.95), 80.0; scale=15.0),
     ),
 )
-problem = Elicitation(beliefs, signal_candidates(); combinations=signal_combinations())
+initial_problem =
+    Elicitation(initial_beliefs, signal_candidates(); combinations=signal_combinations())
 nothing # hide
 
 # ## Fit and compare candidate hyperpriors
@@ -64,7 +65,34 @@ nothing # hide
 # quantities, and Normal and Beta location shapes. All six hyperparameters are independent
 # within each candidate. The five backgrounds share uncertain hyperparameters.
 
+initial_report =
+    fit(Xoshiro(42), initial_problem, NelderMead(); maxiters=20000, g_tol=1e-12)
+display(collect(prior_summary(initial_report)))
+display(collect(target_summary(initial_report, (:beta_normal, 1))))
+
+# ## Review and revise a judgment
+#
+# Discuss the fitted prior's implications with the expert. The probability of a signal
+# rate between 6 and 8 events/year describes how much prior mass lies near the support cap.
+
+near_cap = [
+    (result.id, evaluate(Probability(6.0, 8.0), marginals(result.measure).S).value) for
+    result in initial_report.results
+]
+display(near_cap)
+effective_exposure = sum(experiment.exposure .* experiment.efficiency)
+display(initial_problem[:S, :upper].target * effective_exposure)
+
+# Multiplying the rate quantile by effective exposure gives the corresponding quantile
+# of expected signal yield. Realized counts also have Poisson variation.
+# Suppose the expert revises the 95% rate quantile from 5 to 3.5 events/year after this discussion.
+# Record the reason and retain the original problem alongside its revision.
+
+revision_reason = "The expert revised the upper rate quantile after reviewing external rate knowledge and its expected-yield implication."
+problem =
+    replace(initial_problem, :S => Approximate(:upper, Quantile(0.95), 3.5; scale=1.0))
 report = fit(Xoshiro(42), problem, NelderMead(); maxiters=20000, g_tol=1e-12)
+display((original=initial_problem[:S, :upper].target, revised=problem[:S, :upper].target))
 display(collect(prior_summary(report)))
 all(result -> result.error === nothing, report.results) ||
     error("Inspect failed starts before continuing.")
