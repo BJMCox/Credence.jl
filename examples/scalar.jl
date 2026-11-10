@@ -161,13 +161,14 @@ nothing # hide
 #
 # ## Inspect prior predictive implications
 #
-# Blue curves are expected binned spectra from 200 hierarchical prior draws. Black points
-# are the synthetic observed counts per bin. The right panel draws total counts from the
-# Poisson model, with the observed total marked in black. These are prior predictions,
+# Use 10,000 hierarchical prior predictive draws. Blue curves show expected binned spectra
+# for the first 200 draws. Black points are the synthetic observed counts per bin.
+# The right panel uses all 10,000 Poisson count draws, with the observed total marked in black.
+# These are prior predictions,
 # not posterior fits or validation of hard bounds. Binning is only a display choice.
 # Feedback used to revise elicited judgments must remain independent of these search observations.
 
-predictive_figure = spectrum_feedback(Xoshiro(45), prior, data; ndraws=200)
+predictive_figure = spectrum_feedback(Xoshiro(45), prior, data; ndraws=10_000)
 save("elicitation-output/prior-predictive.svg", predictive_figure);
 println("Plots saved in elicitation-output") #!md
 nothing # hide

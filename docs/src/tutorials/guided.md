@@ -265,14 +265,15 @@ truth_parameters = background_parameters(Xoshiro(2026), truth);
 data = simulate_spectrum(Xoshiro(2027), truth_parameters);
 (counts=data.counts, total=sum(data.counts), energy_rows=length(data.energy))
 spectrum_loglikelihood(parameters, data)
-predictive_figure = spectrum_feedback(Xoshiro(45), prior, data; ndraws=200);
+predictive_figure = spectrum_feedback(Xoshiro(45), prior, data; ndraws=10_000);
 save("elicitation-output/prior-predictive.svg", predictive_figure);
 ```
 
 ![Prior expected spectra and predictive counts compared with synthetic observations.](elicitation-output/prior-predictive.svg)
 
-Blue curves show expected binned spectra from prior draws. Black points show synthetic
-observed counts. The right panel samples total counts from the Poisson model and marks
+The run uses 10,000 hierarchical prior predictive draws. Blue curves show expected binned
+spectra for the first 200 draws. Black points show synthetic observed counts.
+The right panel uses all 10,000 Poisson count draws and marks
 the observed total. These are prior predictions, not posterior fits or hard-bound certificates.
 The likelihood uses individual energies. Plot bins and display limits do not select events.
 Do not reuse these search observations as independent prior-elicitation information.

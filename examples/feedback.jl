@@ -81,7 +81,7 @@ function joint_feedback(rng, prior; ndraws=1000)
     return figure
 end
 
-function spectrum_feedback(rng, prior, data; ndraws=200)
+function spectrum_feedback(rng, prior, data; ndraws=10_000, ncurves=200)
     lower = min(0.0, 5floor(minimum(data.energy) / 5))
     upper = max(200.0, 5ceil(maximum(data.energy) / 5) + 5)
     edges = collect(lower:5.0:upper)
@@ -92,13 +92,15 @@ function spectrum_feedback(rng, prior, data; ndraws=200)
     spectrum = Axis(figure[1, 1]; xlabel="Energy (keV)", ylabel="Events per 5 keV bin")
     totals = Axis(figure[1, 2]; xlabel="Total events", ylabel="Prior predictive draws")
     draws = Int[]
-    for _ in 1:ndraws
+    for i in 1:ndraws
         parameters = background_parameters(rng, rand(rng, prior))
         background, signal = expected_yields(parameters)
-        background_mass = diff(cdf.(Ref(Exponential(parameters.lam)), edges))
-        signal_mass = diff(cdf.(Ref(Normal(parameters.mu, parameters.width)), edges))
-        expected = sum(background) .* background_mass .+ sum(signal) .* signal_mass
-        lines!(spectrum, centres, expected; color=(:steelblue, 0.1))
+        if i <= ncurves
+            background_mass = diff(cdf.(Ref(Exponential(parameters.lam)), edges))
+            signal_mass = diff(cdf.(Ref(Normal(parameters.mu, parameters.width)), edges))
+            expected = sum(background) .* background_mass .+ sum(signal) .* signal_mass
+            lines!(spectrum, centres, expected; color=(:steelblue, 0.1))
+        end
         push!(draws, sum(rand.(Ref(rng), Poisson.(background .+ signal))))
     end
     scatter!(spectrum, centres, observed; color=:black, markersize=5)
