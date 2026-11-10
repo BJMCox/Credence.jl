@@ -1,6 +1,7 @@
 name = "Credence"
 uuid = "178d0c97-14ee-4441-973b-23c323c9f53d"
-version = "0.1.0-DEV"
+version = "0.0.1"
+license = "Apache-2.0"
 authors = ["Jessica Cox <bcox@mpp.mpg.de> and contributors"]
 
 [compat]
