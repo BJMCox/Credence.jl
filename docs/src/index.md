@@ -64,11 +64,15 @@ rand(Xoshiro(3), prior^5)
 `measure(selection)` returns the selected measure itself. The report stays separate from
 the prior. Treat report measures and captured callbacks as read-only after validation.
 
-## Fit and compare families
+## Choose a workflow
 
-Loading Optimization.jl adds `fit(rng, problem, algorithm; ...)`. The
-[family comparison tutorial](@ref scalar-tutorial) fits Normal and Student-t candidates
-to the same quartiles and examines their different tails.
+The [programmatic workflow](@ref scalar-tutorial) runs a recorded set of judgments and an
+explicit decision as a script. The [guided REPL session](@ref guided-tutorial) asks one
+question at a time, shows feedback, and revises an answer before accepting a prior.
+Both use the same constructors, fitting methods, validation, and selection rules.
+
+Loading Optimization.jl adds `fit(rng, problem, algorithm; ...)`. Both workflows compare
+Normal and Student-t families rather than choosing a family automatically.
 
 The [Wren tutorial](@ref wren-tutorial) fits a joint coefficient and scale prior, preserves
 coefficient dependence through Plaice, then samples a posterior with NUTS.

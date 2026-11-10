@@ -9,8 +9,10 @@ and returns an explicitly selected MeasureBase measure.
 Optimization.jl provides optional numerical fitting. Plaice support lets wrapped measures and
 named products enter Wren models as joint priors, preserving dependence and support transforms.
 
-Start with the [documentation](docs/src/index.md), [scalar example](examples/scalar.jl),
-or [Wren example](examples/wren.jl). The tutorials use those runnable files as their source.
+Start with the [programmatic example](examples/scalar.jl) or the
+[guided Julia REPL session](docs/src/tutorials/guided.md). Both fit, compare, validate,
+and explicitly select a prior. The [documentation](docs/src/index.md) explains the API,
+and the [Wren example](examples/wren.jl) shows model integration.
 The prototype targets pinned MeasureBase and HeterogeneousComputing development APIs.
 
 Run the scalar fitting example with Julia 1.13:

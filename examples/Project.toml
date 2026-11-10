@@ -1,4 +1,5 @@
 [deps]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Credence = "178d0c97-14ee-4441-973b-23c323c9f53d"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 HeterogeneousComputing = "2182be2a-124f-4a91-8389-f06db5907a21"
@@ -10,10 +11,11 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [sources]
 Credence = {path = ".."}
-MeasureBase = {url = "https://github.com/JuliaMath/MeasureBase.jl", rev = "ad53c244f905d57c8f35c15fe1da0ef163023096"}
-HeterogeneousComputing = {url = "https://github.com/oschulz/HeterogeneousComputing.jl", rev = "18f24c9b7b7ad92e89cabb96cddfd4ef12d4565d"}
+HeterogeneousComputing = {rev = "18f24c9b7b7ad92e89cabb96cddfd4ef12d4565d", url = "https://github.com/oschulz/HeterogeneousComputing.jl"}
+MeasureBase = {rev = "ad53c244f905d57c8f35c15fe1da0ef163023096", url = "https://github.com/JuliaMath/MeasureBase.jl"}
 
 [compat]
+CairoMakie = "0.15"
 Distributions = "0.25"
 HeterogeneousComputing = "0.3"
 MeasureBase = "0.15"

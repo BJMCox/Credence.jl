@@ -38,7 +38,8 @@ makedocs(;
     pages=[
         "Getting started" => "index.md",
         "Tutorials" => [
-            "Comparing prior families" => "tutorials/scalar.md",
+            "Programmatic elicitation" => "tutorials/scalar.md",
+            "Guided REPL session" => "tutorials/guided.md",
             "A joint prior in Wren" => "tutorials/wren.md",
         ],
         "Guide" => ["Beliefs and validation" => "validation.md"],
