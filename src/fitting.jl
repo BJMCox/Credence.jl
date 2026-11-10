@@ -156,7 +156,7 @@ end
 """
     Evaluate()
 
-Evaluate the declared parameter points without optimizing or assigning probability weights.
+Evaluate each declared parameter point as a separate candidate result.
 """
 struct Evaluate end
 
@@ -187,7 +187,7 @@ mutable struct FitReport{P,R,S,N}
 end
 FitReport(problem, results) = FitReport(problem, results, nothing, nothing)
 
-"""`diagnostics(problem_or_report)` returns preserved input inconsistencies without repairing the targets."""
+"""`diagnostics(problem_or_report)` reports input inconsistencies and preserves the supplied targets."""
 function diagnostics(problem::Elicitation)
     Tuple(
         (id=b.id, code=code) for b in problem.beliefs if b isa Approximate for

@@ -1,11 +1,12 @@
 # Credence.jl
 
-Credence turns an expert's beliefs into candidate prior distributions. State probability,
-quantile, mean, or spread beliefs, compare several families, then select a prior explicitly.
-The result is a native MeasureBase measure that can enter a Wren model.
+Credence fits candidate prior distributions to an expert's judgments about probabilities,
+quantiles, means, and dispersion. It provides methods for comparing families, validating
+fitted candidates, and recording a selection. The selected prior is a native MeasureBase
+measure, suitable for use in a Wren model.
 
-This is an initial prototype for a single expert. Candidate comparison supports expert
-judgment. It does not choose a family for you.
+This initial prototype supports elicitation from a single expert. Family selection is
+an explicit expert decision, informed by the fitted targets and candidate comparisons.
 
 ## Installation
 
@@ -44,8 +45,9 @@ map(validation.checks) do checks
 end
 ```
 
-`fit(rng, problem)` evaluates the supplied points. It does not optimize them. The Normal
-median satisfies the requirement. The LogNormal median does not.
+`fit(rng, problem)` evaluates the supplied starts. Here, the Normal median is 0 and
+satisfies the requirement. The LogNormal median is 1 and violates it.
+Loading Optimization.jl adds `fit(rng, problem, algorithm; ...)` to optimize family parameters.
 
 ## Select and use a prior
 
@@ -76,8 +78,8 @@ Both use the same constructors, fitting methods, validation, and selection rules
 signal strength, line location, resolution, and background uncertainty. Five conditional
 background rates complete the hierarchy. Every hyperparameter has explicit support and elicited targets.
 
-Loading Optimization.jl adds `fit(rng, problem, algorithm; ...)`. Both workflows compare
-bounded Beta, LogNormal, and Normal shapes rather than choosing a family automatically.
+Both workflows compare bounded Beta, LogNormal, and Normal families and record the
+expert's choice.
 
 The [Wren tutorial](@ref wren-tutorial) fits a joint coefficient and scale prior, preserves
 coefficient dependence through Plaice, then samples a posterior with NUTS.

@@ -64,7 +64,7 @@ model = regression(prior, 0.4)
 
 # ## Sample with NUTS
 #
-# This model reads its fixed prior without mutating it. Elide that copy alone to work around
+# This model treats its fixed prior as read-only. Disable copying for this argument to work around
 # [Enzyme #3527](https://github.com/EnzymeAD/Enzyme.jl/issues/3527), related to
 # [#3561](https://github.com/EnzymeAD/Enzyme.jl/issues/3561).
 # This uses the pinned Wren version's internal API. Wren can mutate other model arguments,
@@ -81,5 +81,5 @@ chain = nuts(
 )
 display(size(chain))
 
-# `chain` is ready for use as a FlexiChains chain. The 200 retained draws illustrate the
-# interface; assess convergence and Monte Carlo error before using a posterior estimate.
+# `chain` is a FlexiChains chain. The 200 retained draws illustrate the interface.
+# Assess convergence and Monte Carlo error before using a posterior estimate.

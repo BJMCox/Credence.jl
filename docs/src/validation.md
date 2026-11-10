@@ -1,6 +1,6 @@
 # [Beliefs and validation](@id validation-guide)
 
-## State what the expert means
+## Define beliefs
 
 | Belief                                                  | Meaning                                                                    |
 |:------------------------------------------------------- |:-------------------------------------------------------------------------- |
@@ -10,8 +10,8 @@
 | `Hard(id, statistic, EqualTo(x))`                       | The statistic must equal `x` exactly.                                      |
 | `Approximate(id, statistic, target; scale, importance)` | A point target with an explicit discrepancy scale and optional importance. |
 
-Use `Between` to express an expert's tolerance. `EqualTo` supplies no implicit numerical
-tolerance. An approximate target records a discrepancy, not a pass/fail requirement.
+Use `Between` to express an expert's tolerance and `EqualTo` for exact equality.
+Approximate targets contribute discrepancies to fitting and candidate comparison.
 
 `Probability(a, b)` means `P(a < X <= b)`, including for discrete laws.
 `Quantile(p)` is the lower quantile, so it preserves atoms and support gaps.
@@ -21,7 +21,7 @@ analytic statistic of a measure, including properties of a joint prior.
 The [input guide](@ref input-guide) covers named parameter groups, joint and derived
 quantities, array targets, and standard family descriptors.
 
-## Fit without hiding preferences
+## Fit and compare candidates
 
 Each `Candidate` supplies a measure builder, parameter starts, and optional parameter bounds.
 Builders must return normalized MeasureBase measures. A failed start remains in the report
@@ -29,8 +29,8 @@ with its error. Successful numerical fits retain the solver result and its retur
 
 Scalar optimization minimizes the sum of squared, scale-normalized target discrepancies,
 weighted by importance. Weights are divided by their maximum first. Multiplying all weights
-by a positive constant therefore leaves the objective unchanged. Zero-weight targets are
-not fitted. Importance defaults to one per belief. Array beliefs use the average squared
+by a positive constant therefore leaves the objective unchanged. Zero-weight targets contribute
+zero to the objective. Importance defaults to one per belief. Array beliefs use the average squared
 scaled error over their supplied free entries. Splitting one array belief into several
 scalar beliefs changes the weighting unless importance is redistributed explicitly.
 
@@ -40,9 +40,9 @@ AD type when the solver needs derivatives. The tutorials use deterministic solve
 Stochastic backends need their own explicitly configured RNG through their solver options.
 
 `compare(report)` uses each approximate target's absolute, scale-normalized discrepancy.
-It retains Pareto dominance, ties, tradeoffs, and unresolved pairs. Importance weights do not
-collapse these comparisons into one score. Satisfying a hard requirement by a larger margin
-does not make a candidate preferable.
+It reports Pareto dominance, ties, tradeoffs, and unresolved pairs using discrepancies for
+each target separately. Importance weights affect fitting, while comparison uses the
+discrepancy vectors. Hard requirements determine feasibility.
 
 Ungrouped and combined results use `(candidate_id, start_index)`. Marginal results use
 `(target, candidate_id, start_index)`. `select(report, target, (candidate_id, start_index); ...)`
@@ -56,8 +56,8 @@ provides a convenient marginal lookup.
 | `incomparable` | Pairs where improving one target worsens another.                 |
 | `unresolved`   | Pairs whose evidence cannot support an exact comparison.          |
 
-`Evaluate()` considers only supplied points. Optimization retains the solution from each
-start. Neither operation claims a complete feasible region or a complete Pareto frontier.
+`Evaluate()` considers the supplied points. Optimization retains the solution from each
+start. Comparisons describe these retained results, rather than a complete Pareto frontier.
 
 ## Check fixed candidates
 
@@ -92,12 +92,12 @@ or violation. Uncertain approximate-target comparisons remain unresolved.
 ## Accept explicitly
 
 `select(report, id; validation, rationale)` accepts a concrete result only when the validation
-belongs to that same report and every hard requirement is satisfied. Approximate targets stay
-targets, so review their achieved values yourself. Solver success does not replace validation.
+belongs to that same report and every hard requirement is satisfied. Review the achieved approximate targets
+separately. Acceptance requires validation even when the solver reports success.
 
 Use `role=:reference` to retain a result for exploration without declaring acceptance.
-Selection records the role and rationale. `measure(selection)` returns the native measure
-without adding report metadata to the prior.
+Selection records the role and rationale. `measure(selection)` returns the native measure,
+with report metadata retained separately.
 
 Marginal acceptance is local. Joint beliefs stay `:pending` until one candidate covers their
 references. Acceptance of a complete joint prior requires those beliefs to be checked too.

@@ -73,12 +73,11 @@ comparison = compare(report)
 display(comparison.incomparable)
 
 # Solver codes and achieved targets are retained for every start. Pareto comparisons
-# do not choose a prior family. Small residual differences do not settle scientific assumptions.
+# describe agreement with the targets. Review the family assumptions when selecting a prior.
 #
 # ## Inspect all six marginal priors
 #
-# Each curve is one retained fit. Neither plot is a mixture of candidate families or a
-# credible band. Endpoints are omitted from density curves because a continuous Beta
+# Each curve represents one retained fit. Endpoints are omitted because a continuous Beta
 # density can diverge at a boundary without assigning a point mass there.
 
 mkpath("elicitation-output")
@@ -103,8 +102,8 @@ nothing # hide
 #
 # ## Validate and select explicitly
 #
-# The fitted targets are approximate, so their checks are `:target`, not hard pass/fail
-# certificates. Physical support restrictions come from the bounded candidate laws.
+# Approximate targets receive the status `:target`. Review their achieved values when
+# selecting a prior. Physical support restrictions come from the bounded candidate laws.
 
 validation = validate(Xoshiro(43), report)
 display([[check.status for check in row] for row in validation.checks])
@@ -120,8 +119,8 @@ nothing # hide
 #
 # The selected object is a native hyperprior. Draw the five background rates conditionally
 # to obtain the full hierarchical prior. The lognormal correction preserves their mean `m_B`.
-# The following fresh synthetic dataset changes the original example's numbers.
-# Its generating values are used only to make this demonstration reproducible, not to fit priors.
+# Fixed generating parameters make the following synthetic dataset reproducible.
+# Elicitation uses the external judgments recorded above.
 
 truth = (S=0.8, mu=125.4, width=1.6, sigma_B=0.35, m_B=7.0, lam=55.0)
 truth_parameters = background_parameters(Xoshiro(2026), truth)
@@ -157,15 +156,14 @@ nothing # hide
 #
 # The likelihood combines per-detector counts with individual event energies.
 # Julia's `Exponential(lam)` uses `lam` as its mean scale in keV.
-# No energy selection window or histogram approximation enters the likelihood.
+# The likelihood includes every event energy. Binning serves only the display.
 #
 # ## Inspect prior predictive implications
 #
 # Use 10,000 hierarchical prior predictive draws. Blue curves show expected binned spectra
 # for the first 200 draws. Black points are the synthetic observed counts per bin.
 # The right panel uses all 10,000 Poisson count draws, with the observed total marked in black.
-# These are prior predictions,
-# not posterior fits or validation of hard bounds. Binning is only a display choice.
+# These prior predictions describe the selected prior's implications for observable data.
 # Feedback used to revise elicited judgments must remain independent of these search observations.
 
 predictive_figure = spectrum_feedback(Xoshiro(45), prior, data; ndraws=10_000)

@@ -19,7 +19,7 @@ include(joinpath(pkgdir(Credence), "examples", "feedback.jl"));
 
 ## Agree on quantities and hard bounds
 
-Ask: **Which rate and which energy are we discussing? What can independent knowledge rule out?**
+Ask: **Which physical quantities do the parameters describe? What bounds follow from external knowledge?**
 
 | Quantity | Meaning | Illustrative support |
 |:--|:--|:--|
@@ -39,8 +39,7 @@ Every candidate enforces them through its support, independently of solver toler
 is also a different statement from a hard cap or a posterior upper limit.
 
 Both location families assume symmetry about 125 keV. Confirm this family assumption
-separately from the probability question below. All six hyperparameters receive elicited
-priors. No background hyperprior remains an implicit default.
+separately from the probability question below. The session elicits priors for all six hyperparameters.
 
 ## Ask for probability judgments
 
@@ -56,7 +55,7 @@ The answer is **90%**.
 For each remaining positive quantity, ask the same median and 95% upper-quantile questions.
 These judgments could come from calibration studies or previous detector runs.
 For `sigma_B`, discuss variation on the log-rate scale before asking for its uncertainty.
-Conditional background rates have log standard deviation `sigma_B`, not standard deviation `sigma_B`.
+Conditional background rates have log standard deviation `sigma_B`.
 
 | Quantity | Median | 95% upper quantile | Discrepancy scale |
 |:--|--:|--:|--:|
@@ -65,8 +64,8 @@ Conditional background rates have log standard deviation `sigma_B`, not standard
 | Mean background rate, events/year | 7 | 10.5 | 2 events/year |
 | Background energy scale, keV | 55 | 80 | 15 keV |
 
-Pause if the expert cannot judge. An unanswered question does not become zero or a uniform
-prior. These 11 illustrative answers concern external knowledge, not the search events.
+Leave uncertain answers unspecified and discuss what information would support a judgment.
+These 11 illustrative answers describe knowledge external to the search observations.
 
 ```@repl guided
 initial_beliefs = (
@@ -94,17 +93,17 @@ initial_beliefs = (
 )
 ```
 
-Read the probability statements back to the expert before fitting. Each parameter key owns
-its explicitly named beliefs. `Quantile` and `Probability` define their statistics directly.
+Read the probability statements back to the expert before fitting. Each parameter key groups
+its named beliefs. `Quantile` and `Probability` define their statistics directly.
 The [model definition](@ref rare-event-model) declares candidate families separately.
-All 11 are approximate targets. The scales
-and equal importance weights are explicit fitting preferences.
+All 11 judgments are approximate targets. Their scales and equal importance weights
+define the fitting objective.
 
 ## Compare candidate shapes
 
 The first family uses scaled Beta priors for all five positive quantities and a truncated
 Normal location prior. The second uses truncated LogNormal priors and a symmetric scaled Beta location.
-Both have the same hard supports. Product hyperparameters are independent in these families.
+Both have the same hard supports. The hyperparameters are independent within each candidate.
 The dataset-specific backgrounds remain conditional on shared `m_B` and `sigma_B`.
 
 ```@repl guided
@@ -117,7 +116,8 @@ collect(target_summary(initial_report, (:beta_normal, 1)))
 
 The summary retains every start, its largest scaled residual, and its solver code or error.
 `target_summary` shows all 11 achieved targets for any retained result ID.
-Solver success is distinct from validation. Small residual differences do not select a family.
+Use the residuals to assess agreement with the judgments, then review the family assumptions
+and validate the candidate before selection.
 
 ## Discuss implications before revising
 
@@ -142,8 +142,7 @@ save("elicitation-output/initial-signal-prior.svg", initial_strength);
 
 ![Initial signal-rate prior densities and cumulative probabilities.](elicitation-output/initial-signal-prior.svg)
 
-The dashed CDF levels mark the elicited 50% and 95% quantiles. Each curve is one retained
-fit, not a mixture weight or a credible band. Density endpoints are omitted because a
+The dashed CDF levels mark the elicited 50% and 95% quantiles. Each curve represents one retained fit. Density endpoints are omitted because a
 continuous Beta density can diverge at a boundary without creating a point mass there.
 
 Translate the rate into expected signal events for the known exposures and efficiencies:
@@ -155,13 +154,12 @@ initial_problem[:S, :upper].target * effective_exposure
 
 This gives a target for the 95% prior quantile of the *expected signal yield*, which is
 linear in `S`. It does not specify a quantile of the realized signal count or total count.
-No search observations have entered this feedback.
+This feedback uses the elicited rate and the experimental design.
 
 ## Revise the judgment and retain the original
 
 Suppose the expert reviews their external rate assessment and changes the 95% rate
-quantile to **3.5 events/year**. Record the reason. This is a revised prior judgment,
-not a posterior limit extracted from the search data.
+quantile to **3.5 events/year**. Record the reason for this revised prior judgment.
 
 ```@repl guided
 revision_reason = "The expert revised the upper rate quantile after reviewing external rate knowledge and its expected-yield implication.";
@@ -194,11 +192,11 @@ comparison.incomparable
 
 Symmetry makes 90% central location probability correspond to CDF levels 5% and 95%
 at 124 and 126 keV. The location-support endpoints remain 122 and 128 keV.
-Feedback does not add a judgment unless the expert explicitly adopts it.
+Record any further judgments that the expert adopts after reviewing the feedback.
 
 ## Validate the current report and select
 
-Validation belongs to its report. An assessment of the initial fit cannot accept the revision:
+Validate the revised report using its fitted measures:
 
 ```@repl guided
 initial_validation = validate(Xoshiro(43), initial_report);
@@ -213,8 +211,7 @@ Approximate quantile targets can differ slightly from their requested values num
 
 Ask: **Which candidate do you accept, and why?**
 
-For this demonstration, the expert chooses the first Beta/Normal fit. The decision and
-rationale are inputs, rather than consequences of a ranking rule.
+For this demonstration, the expert chooses the first Beta/Normal fit. The selection records the expert's decision and rationale.
 
 ```@repl guided
 selection = select(
@@ -248,16 +245,15 @@ save("elicitation-output/joint-prior.svg", joint_figure);
 ![Joint signal and hierarchical background prior draws.](elicitation-output/joint-prior.svg)
 
 The left panel shows signal rate and location, coloured by signal width. Their independence
-is an explicit family assumption, not a result inferred from marginal judgments.
+is a family assumption.
 The right panel shows background rates from the same joint draws. Shared uncertain
 hyperparameters make these rates dependent. In particular, their covariance equals the
 prior variance of `m_B`, since each conditional mean equals `m_B`.
 
 ## Use the scientific likelihood
 
-Only after the prior exercise do we generate a fresh synthetic search dataset. The truth
-values below are a reproducibility device. They were not used to fit or revise the prior.
-The exposures, efficiencies, and generated observations differ from the original example.
+Generate a synthetic search dataset after completing elicitation. The fixed generating
+parameters make this demonstration reproducible. Elicitation uses the external judgments above.
 
 ```@repl guided
 truth = (S=0.8, mu=125.4, width=1.6, sigma_B=0.35, m_B=7.0, lam=55.0);
@@ -274,9 +270,9 @@ save("elicitation-output/prior-predictive.svg", predictive_figure);
 The run uses 10,000 hierarchical prior predictive draws. Blue curves show expected binned
 spectra for the first 200 draws. Black points show synthetic observed counts.
 The right panel uses all 10,000 Poisson count draws and marks
-the observed total. These are prior predictions, not posterior fits or hard-bound certificates.
-The likelihood uses individual energies. Plot bins and display limits do not select events.
-Do not reuse these search observations as independent prior-elicitation information.
+the observed total. These prior predictions describe the selected prior's implications for
+observable data. The likelihood uses every individual energy, while binning serves only
+the display. Keep elicitation based on information independent of these search observations.
 
 The programmatic workflow replays the final beliefs, fitting settings, and explicit choice.
 Keep the questions, revisions, family assumptions, seeds, and environment with that script.

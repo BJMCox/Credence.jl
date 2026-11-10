@@ -8,9 +8,9 @@
 # ## Experimental design and units
 #
 # Exposure is measured in years, rates in events/year, and energies in keV.
-# `S` is a signal rate before efficiency, not a peak height or an event energy.
-# The support bounds below are illustrative external assumptions, not limits inferred
-# from the observed events. A 95% prior upper quantile is a separate judgment.
+# `S` is the signal rate before efficiency. The support bounds below are illustrative
+# external assumptions. A 95% prior upper quantile is a separate judgment about probability
+# within that support.
 
 using Credence, MeasureBase
 using Distributions:
@@ -51,8 +51,8 @@ end
 nothing # hide
 
 # Counts follow a Poisson law. Each event energy follows a normalized mixture whose
-# weights are the expected yields. Retain every simulated energy. No analysis-window
-# selection is applied. A finite plot window does not truncate this likelihood.
+# weights are the expected yields. The likelihood includes every simulated energy,
+# including energies outside the plot window.
 
 function expected_yields(parameters)
     background = experiment.exposure .* parameters.B
@@ -89,8 +89,8 @@ function spectrum_loglikelihood(parameters, data)
 end
 nothing # hide
 
-# `MixtureModel` evaluates log densities without first adding ordinary component densities.
-# This keeps the likelihood usable for small background scales and for `S = 0`.
+# `MixtureModel` evaluates the mixture in log space for numerical stability at small
+# background scales and at `S = 0`.
 # Counts and the number of energy rows per dataset must describe the same observations.
 #
 # ## Candidate hyperpriors
@@ -105,7 +105,7 @@ nothing # hide
 scaled_beta(bounds, a, b) =
     LocationScale(first(bounds), last(bounds) - first(bounds), Beta(exp(a), exp(b)))
 
-# Standard descriptors own their parameter transforms and starts. The location Beta
+# Standard descriptors define parameter transforms and starts. The location Beta
 # uses the custom form to impose symmetry explicitly through one shared shape parameter.
 
 function signal_candidates()
@@ -166,9 +166,8 @@ function signal_combinations()
 end
 nothing # hide
 
-# These two combinations explicitly declare independent hyperparameters.
-# They avoid silently enumerating every possible mix of marginal families.
-# The selected product remains a native MeasureBase measure.
+# These two combinations define the candidate product measures.
+# The selected product is a native MeasureBase measure.
 
 function target_summary(report, id)
     result = only(filter(r -> r.id == id, report.results))

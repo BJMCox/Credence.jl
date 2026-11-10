@@ -88,7 +88,7 @@ Statistic(f; label=:custom) = Statistic(f, label)
 """
     Analytic()
 
-Evaluate through analytic measure operations, without sampling.
+Evaluate through analytic measure operations.
 """
 struct Analytic end
 

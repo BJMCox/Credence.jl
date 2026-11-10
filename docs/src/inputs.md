@@ -1,6 +1,6 @@
 # [Named beliefs and candidate families](@id input-guide)
 
-Parameter names own collections of beliefs. Each belief names its statistic directly:
+Each parameter name is paired with a collection of beliefs. Each belief specifies a statistic:
 
 ```@example inputs
 using Credence, MeasureBase, VarNames, LinearAlgebra
@@ -21,7 +21,7 @@ nothing # hide
 
 `:S` abbreviates `@vn(S)`. Indexed and nested references such as `@vn(B[1])` and
 `@vn(detector.width)` use VarNames. A whole vector or matrix can remain one target.
-Belief IDs such as `:median` are local labels. They do not encode statistical meaning.
+Belief IDs such as `:median` are local labels. The statistic constructor defines their meaning.
 
 The two mean errors above use different scales. An error of one in the first entry
 counts equally to an error of two in the second. A scalar scale applies uniformly.
@@ -77,7 +77,7 @@ nothing # hide
 Credence converts the named record to optimizer coordinates and restores it for the
 builder and fitted result. Existing positional builders remain supported.
 
-## Own joint and derived judgments explicitly
+## Define joint and derived beliefs
 
 ```@example inputs
 joint_beliefs = (
@@ -108,7 +108,7 @@ matrix targets. The original targets remain available for discussion.
 
 ## Choose dependence and combinations
 
-Declaring marginal families does not declare independence. Choose combinations explicitly:
+Specify dependence when combining marginal families. `Independent` constructs their product:
 
 ```@example inputs
 joint_problem = Elicitation((beliefs..., joint_beliefs...), candidates;
