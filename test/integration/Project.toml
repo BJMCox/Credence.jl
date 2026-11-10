@@ -1,0 +1,29 @@
+[deps]
+ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
+Credence = "178d0c97-14ee-4441-973b-23c323c9f53d"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+HeterogeneousComputing = "2182be2a-124f-4a91-8389-f06db5907a21"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+LogDensityProblems = "6fdf6af0-433a-55f7-b3ed-c6c6e0b8df7c"
+MeasureBase = "fa1605e6-acd5-459c-a1e6-7e635759db14"
+PDMats = "90014a1f-27ba-587c-ab20-58faa44d9150"
+Optimization = "7f7a1694-90dd-40f0-9382-eb1efda571ba"
+OptimizationOptimJL = "36348300-93cb-4f02-beb5-3c3902f8871e"
+Plaice = "55802ec2-189d-45e6-a786-b4d97e4775f1"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+VarNames = "09a315b2-63fc-4165-8d7f-d59368e770cc"
+Wren = "bcabdda7-19af-429b-97ac-a6b557ca0f6c"
+WrenCore = "008b59e7-bbda-4991-901b-b08f5cfc584d"
+WrenDists = "2ad4af40-d7c9-42b2-92b0-e09d37d1e75a"
+
+[sources]
+Credence = {path = "../.."}
+MeasureBase = {url = "https://github.com/JuliaMath/MeasureBase.jl", rev = "ad53c244f905d57c8f35c15fe1da0ef163023096"}
+HeterogeneousComputing = {url = "https://github.com/oschulz/HeterogeneousComputing.jl", rev = "18f24c9b7b7ad92e89cabb96cddfd4ef12d4565d"}
+Plaice = {url = "https://github.com/JuliaBayes/Plaice.jl", rev = "e71dc282ce188c42639298616fea31c8c9051f70"}
+Wren = {url = "https://github.com/JuliaBayes/Wren.jl", subdir = "Wren", rev = "d402e30ec74153259e871b94b08505f029ad311c"}
+WrenCore = {url = "https://github.com/JuliaBayes/Wren.jl", subdir = "WrenCore", rev = "d402e30ec74153259e871b94b08505f029ad311c"}
+WrenDists = {url = "https://github.com/JuliaBayes/Wren.jl", subdir = "WrenDists", rev = "d402e30ec74153259e871b94b08505f029ad311c"}

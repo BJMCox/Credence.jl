@@ -1,10 +1,16 @@
 [deps]
 Credence = "178d0c97-14ee-4441-973b-23c323c9f53d"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+HeterogeneousComputing = "2182be2a-124f-4a91-8389-f06db5907a21"
+MeasureBase = "fa1605e6-acd5-459c-a1e6-7e635759db14"
 
 [sources]
 Credence = {path = ".."}
+MeasureBase = {url = "https://github.com/JuliaMath/MeasureBase.jl", rev = "ad53c244f905d57c8f35c15fe1da0ef163023096"}
+HeterogeneousComputing = {url = "https://github.com/oschulz/HeterogeneousComputing.jl", rev = "18f24c9b7b7ad92e89cabb96cddfd4ef12d4565d"}
 
 [compat]
 Documenter = "1"
+HeterogeneousComputing = "0.3"
+MeasureBase = "0.15"
 julia = "1.10"

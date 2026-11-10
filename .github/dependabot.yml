@@ -8,5 +8,7 @@ updates:
     directories:
       - /
       - /docs
+      - /examples
+      - /test/integration
     schedule:
       interval: weekly

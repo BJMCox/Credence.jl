@@ -2,4 +2,5 @@
 
 ## Unreleased
 
-  - Set up the package, documentation, and development workflows.
+  - Add the initial fitting, comparison, validation, and explicit-selection workflow.
+  - Add optional Optimization and Plaice integrations, with scalar and Wren examples.

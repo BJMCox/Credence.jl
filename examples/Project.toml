@@ -1,0 +1,24 @@
+[deps]
+Credence = "178d0c97-14ee-4441-973b-23c323c9f53d"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+HeterogeneousComputing = "2182be2a-124f-4a91-8389-f06db5907a21"
+MeasureBase = "fa1605e6-acd5-459c-a1e6-7e635759db14"
+Optimization = "7f7a1694-90dd-40f0-9382-eb1efda571ba"
+OptimizationOptimJL = "36348300-93cb-4f02-beb5-3c3902f8871e"
+PDMats = "90014a1f-27ba-587c-ab20-58faa44d9150"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+
+[sources]
+Credence = {path = ".."}
+MeasureBase = {url = "https://github.com/JuliaMath/MeasureBase.jl", rev = "ad53c244f905d57c8f35c15fe1da0ef163023096"}
+HeterogeneousComputing = {url = "https://github.com/oschulz/HeterogeneousComputing.jl", rev = "18f24c9b7b7ad92e89cabb96cddfd4ef12d4565d"}
+
+[compat]
+Distributions = "0.25"
+HeterogeneousComputing = "0.3"
+MeasureBase = "0.15"
+Optimization = "4, 5"
+OptimizationOptimJL = "0.4"
+PDMats = "0.11"
+Random = "1"
+julia = "1.13"
