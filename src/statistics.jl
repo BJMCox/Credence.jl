@@ -131,6 +131,11 @@ function _estimate(x::Real)
 end
 _evaluate(s::Mean, prior, ::Analytic, rng) = _estimate(mean(prior))
 _evaluate(s::Std, prior, ::Analytic, rng) = _estimate(std(prior))
+function _finite_mean(prior)
+    value = mean(prior)
+    _estimate(_flatten(value))
+    value
+end
 _covariance(prior) = cov(prior)
 _covariance(prior::ProductMeasure{<:AbstractArray}) =
     Diagonal(vec(map(var, marginals(prior))))
@@ -144,13 +149,17 @@ function _evaluate(::Covariance, prior, ::Analytic, rng)
     covariance = _covariance(prior)
     size(covariance) == (2, 2) ||
         throw(DimensionMismatch("Covariance requires two scalar quantities"))
+    # Independence gives zero cross-covariance only when the selected means exist.
+    prior isa ProductMeasure && _finite_mean(prior)
     _estimate(covariance[1, 2])
 end
 function _evaluate(::Correlation, prior, ::Analytic, rng)
     covariance = _covariance(prior)
     size(covariance) == (2, 2) ||
         throw(DimensionMismatch("Correlation requires two scalar quantities"))
-    _estimate(covariance[1, 2] / sqrt(covariance[1, 1] * covariance[2, 2]))
+    first_scale = _estimate(sqrt(covariance[1, 1])).value
+    second_scale = _estimate(sqrt(covariance[2, 2])).value
+    _estimate(covariance[1, 2] / first_scale / second_scale)
 end
 function _evaluate(s::Quantile, prior, ::Analytic, rng)
     _estimate(MeasureBase.invsmf(prior, MeasureBase.smf(prior, -Inf) + s.p))

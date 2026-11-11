@@ -28,19 +28,47 @@ function Derived(name, references::Union{Symbol,VarName,Tuple}, f)
     Derived{typeof(name),typeof(normalized),typeof(f)}(name, normalized, f)
 end
 
+"""
+    Predictive(name, references, kernel)
+    Predictive(name, references; simulator)
+
+Define an observable whose conditional measure is `kernel(parameters...)`, with
+parameters passed in reference order. The kernel must return a normalized MeasureBase
+measure. Sampled evaluation draws one observation per shared prior draw and reuses
+that observation across beliefs about this predictive target.
+Alternatively, `simulator(rng, parameters...)` returns an observation directly.
+Each joint prior/observation draw contributes one sample to the uncertainty estimate.
+"""
+struct Predictive{I,R,F}
+    name::I
+    references::R
+    kernel::F
+end
+struct PredictiveSimulator{F}
+    f::F
+end
+Predictive(name, references; simulator) =
+    Predictive(name, references, PredictiveSimulator(simulator))
+function Predictive(name, references::Union{Symbol,VarName,Tuple}, kernel)
+    refs = references isa Tuple ? references : (references,)
+    normalized = map(_reference, refs)
+    Predictive{typeof(name),typeof(normalized),typeof(kernel)}(name, normalized, kernel)
+end
+
 _target(x::Union{Symbol,VarName}) = _reference(x)
-_target(x::Union{Joint,Derived}) = x
+_target(x::Union{Joint,Derived,Predictive}) = x
 _targetid(x) = x
 _targetid(x::Derived) = (:derived, x.name)
+_targetid(x::Predictive) = (:predictive, x.name)
 _references(x::VarName) = (x,)
-_references(x::Union{Joint,Derived}) = x.references
+_references(x::Union{Joint,Derived,Predictive}) = x.references
 
 struct On{T,S} <: AbstractStatistic
     target::T
     statistic::S
 end
-function On(target::Union{VarName,Joint,Derived}, statistic::AbstractStatistic)
-    if statistic isa Union{Covariance,Correlation}
+function On(target::Union{VarName,Joint,Derived,Predictive}, statistic::AbstractStatistic)
+    if statistic isa Union{Covariance,Correlation} && !(target isa Predictive)
         target isa Joint && length(target.references) == 2 || throw(
             DimensionMismatch("pairwise statistics require Joint of two scalar quantities"),
         )
@@ -59,10 +87,6 @@ _bind(target, b::Approximate) = Approximate(
 )
 
 function _grouped_beliefs(groups)
-    derived = filter(p -> p.first isa Derived, groups)
-    names = map(p -> p.first.name, derived)
-    length(unique(names)) == length(names) ||
-        throw(ArgumentError("derived names must be unique"))
     targets = map(p -> _target(p.first), groups)
     length(unique(_targetid.(targets))) == length(targets) ||
         throw(ArgumentError("each target needs one belief collection"))
@@ -75,14 +99,17 @@ function _check_derived(beliefs)
     definitions = Dict{Any,Any}()
     for belief in beliefs
         statistic = belief.statistic
-        statistic isa On && statistic.target isa Derived || continue
+        statistic isa On && statistic.target isa Union{Derived,Predictive} || continue
         target = statistic.target
-        previous = get!(definitions, target.name, target)
-        isequal(previous.references, target.references) && isequal(previous.f, target.f) ||
-            throw(ArgumentError("a derived name must keep one definition"))
+        previous = get!(definitions, _targetid(target), target)
+        isequal(previous.references, target.references) &&
+        isequal(_target_function(previous), _target_function(target)) ||
+            throw(ArgumentError("a named quantity must keep one definition"))
     end
     nothing
 end
+_target_function(target::Derived) = target.f
+_target_function(target::Predictive) = target.kernel
 
 struct NoAnalytic <: Exception
     statistic
@@ -170,6 +197,7 @@ function _analytic_on(statistic, law, scope, target::VarName)
     evaluate(statistic, _law_reference(law, scope, target))
 end
 _analytic_on(statistic, law, scope, target::Derived) = throw(NoAnalytic(statistic))
+_analytic_on(statistic, law, scope, target::Predictive) = throw(NoAnalytic(statistic))
 _evaluate(s::On, prior, ::Analytic, rng) =
     _analytic_on(s.statistic, prior, nothing, s.target)
 function _analytic_on(statistic, law, scope, target::Joint)
@@ -180,7 +208,7 @@ function _analytic_on(statistic, law, scope, target::Joint)
             return _estimate(sqrt.(diag(_covariance(law))))
         end
         if statistic isa Union{Covariance,Correlation}
-            all(x -> x isa Number, mean(law)) ||
+            all(x -> x isa Number, _finite_mean(law)) ||
                 throw(DimensionMismatch("pairwise quantities must be scalar"))
         end
         return evaluate(statistic, law)
@@ -191,7 +219,7 @@ end
 
 function _joint_estimate(statistic, parts, law, scope, target)
     if statistic isa Union{Covariance,Correlation}
-        all(p -> mean(p) isa Number, parts) ||
+        all(p -> _finite_mean(p) isa Number, parts) ||
             throw(DimensionMismatch("pairwise quantities must be scalar"))
     end
     if _base_statistic(statistic) isa
@@ -207,7 +235,8 @@ function _joint_estimate(statistic, parts, law, scope, target)
             throw(DimensionMismatch("pairwise statistics require two scalars"))
         value = matrix[1, 2]
         if statistic isa Correlation
-            value /= sqrt(matrix[1, 1]*matrix[2, 2])
+            value /= _estimate(sqrt(matrix[1, 1])).value
+            value /= _estimate(sqrt(matrix[2, 2])).value
         end
         return _estimate(value)
     elseif statistic isa Mean

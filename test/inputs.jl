@@ -33,7 +33,7 @@ using LinearAlgebra, VarNames, HeterogeneousComputing
     custom = Candidate(
         :custom,
         p->asmeasure(Normal(p.location, exp(p.log_scale))),
-        ((location=2.0, log_scale=0.0),),
+        (location=2.0, log_scale=0.0),
     )
     named = fit(
         Xoshiro(9),

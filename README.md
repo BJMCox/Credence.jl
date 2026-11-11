@@ -61,6 +61,9 @@ Start with the [guide](docs/src/index.md), [beliefs and validation](docs/src/val
 or [API reference](docs/src/api.md). The [Wren example](examples/wren.jl) shows a joint prior
 and requires access to the private Wren repository.
 
+The [FlatPPL example](examples/flatppl.jl) elicits a joint prior and exports a complete
+counting model, with density checks against Julia.
+
 [Open an issue](https://github.com/BJMCox/Credence.jl/issues) for questions, bug reports,
 or feature requests.
 

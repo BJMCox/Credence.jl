@@ -14,6 +14,7 @@ using LogDensityProblems: LogDensityProblems
 using Wren: @wren, @observe, VecModel, FromPrior, nuts, AutoEnzyme, Reverse
 import WrenCore
 using VarNames: @vn
+include("../compound/fixtures.jl")
 
 const covariance = [1.0 0.4; 0.4 0.8]
 
@@ -22,6 +23,46 @@ function joint_prior(p)
         beta=MeasureBase.asmeasure(MvNormal(p[1:2], covariance)),
         sigma=MeasureBase.asmeasure(LogNormal(p[3], 0.4)),
     ))
+end
+
+@wren function compound_prior_model(prior, observed)
+    theta ~ prior
+    @observe observed ~ Normal(sum(theta.coefficients), 1.0)
+end
+
+@testset "Compound priors retain Wren gradients" begin
+    for (index, family) in enumerate(compound_cases())
+        problem = Elicitation((), (:theta => (:law => family,),))
+        prior = only(fit(Xoshiro(3100+index), problem).results).measure
+        model = compound_prior_model(prior, 0.4)
+        z = collect(range(0.1, 0.5; length=Plaice.unconstrained_vec_length(prior)))
+        forward =
+            VecModel(model, AutoForwardDiff(); latent_source=FromPrior(Xoshiro(3200+index)))
+        expected_value, expected_gradient =
+            LogDensityProblems.logdensity_and_gradient(forward, z)
+        copies = filter(!=(:prior), WrenCore._copied_args(model))
+        readonly = WrenCore._with_copied_args(model, copies)
+        enzyme = VecModel(
+            readonly,
+            AutoEnzyme(; mode=Reverse);
+            latent_source=FromPrior(Xoshiro(3300+index)),
+            reduce_copies=false,
+        )
+        value, gradient = LogDensityProblems.logdensity_and_gradient(enzyme, z)
+        @test value ≈ expected_value
+        @test gradient ≈ expected_gradient
+        if family isa Union{RegularizedHorseshoeFamily,R2D2Family,FunctionalHorseshoeFamily}
+            chain = nuts(
+                Xoshiro(3400+index),
+                readonly,
+                16;
+                adtype=AutoEnzyme(; mode=Reverse),
+                reduce_copies=false,
+                progress=false,
+            )
+            @test size(chain) == (16, 1)
+        end
+    end
 end
 
 @wren function scalar_prior(prior)
@@ -168,4 +209,53 @@ end
     @test gradient ≈ expected_gradient
     @test model.args.buffer == before
     @test caller_buffer == zeros(2)
+end
+
+@wren function structured_prior_model(prior, observed)
+    theta ~ prior
+    @observe observed ~ Normal(theta.rate * theta.weights[1] + sum(theta.beta), 1.0)
+end
+
+@testset "New prior families retain Wren gradients" begin
+    problem = Elicitation(
+        (),
+        (
+            :rate => (:gamma => GammaFamily(shape=2.0, scale=3.0),),
+            :weights => (
+                :simplex =>
+                    DirichletFamily(3; mean=[0.2, 0.3, 0.5], concentration=10.0),
+            ),
+            :beta => (:student => MvStudentTFamily(2; df=4.0),),
+        );
+        combinations=(
+            :joint => Independent(:rate=>:gamma, :weights=>:simplex, :beta=>:student),
+        ),
+    )
+    prior = only(fit(Xoshiro(991), problem).results).measure
+    model = structured_prior_model(prior, 0.4)
+    z = [log(4.0), -0.3, 0.4, 1.0, -0.5]
+    forward = VecModel(model, AutoForwardDiff(); latent_source=FromPrior(Xoshiro(992)))
+    expected_value, expected_gradient =
+        LogDensityProblems.logdensity_and_gradient(forward, z)
+    copies = filter(!=(:prior), WrenCore._copied_args(model))
+    readonly = WrenCore._with_copied_args(model, copies)
+    enzyme = VecModel(
+        readonly,
+        AutoEnzyme(; mode=Reverse);
+        latent_source=FromPrior(Xoshiro(993)),
+        reduce_copies=false,
+    )
+    actual_value, actual_gradient = LogDensityProblems.logdensity_and_gradient(enzyme, z)
+    @test isfinite(expected_value) && all(isfinite, expected_gradient)
+    @test actual_value ≈ expected_value
+    @test actual_gradient ≈ expected_gradient
+    chain = nuts(
+        Xoshiro(994),
+        readonly,
+        16;
+        adtype=AutoEnzyme(; mode=Reverse),
+        reduce_copies=false,
+        progress=false,
+    )
+    @test size(chain) == (16, 1)
 end

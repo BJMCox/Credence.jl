@@ -1,9 +1,42 @@
 _statistic(s::On) = s.statistic
 _statistic(s) = s
+_check_moment(statistic, law, scope) = nothing
 _analytic(s, law, scope) = evaluate(s, law)
 _analytic(s::On, law, scope) = _analytic_on(s.statistic, law, scope, s.target)
 _sample_target(draw, scope, s) = draw
 _sample_target(draw, scope, s::On) = _draw_target(draw, scope, s.target)
+_sample_target(draw, scope, s, rng) = _sample_target(draw, scope, s)
+function _sample_target(draw, scope, s::On{<:Predictive}, rng)
+    target = s.target
+    parameters = map(r -> _draw_reference(draw, scope, r), target.references)
+    try
+        _predictive_draw(target.kernel, rng, parameters)
+    catch error
+        error isa InterruptException && rethrow()
+        throw(PredictiveError(target.name, parameters, error))
+    end
+end
+struct PredictiveError{I,P,E} <: Exception
+    name::I
+    parameters::P
+    error::E
+end
+function Base.showerror(io::IO, error::PredictiveError)
+    print(io, "Predictive target ", error.name, " failed at ")
+    show(io, error.parameters)
+    print(io, ": ")
+    showerror(io, error.error)
+end
+_predictive_draw(simulator::PredictiveSimulator, rng, parameters) =
+    simulator.f(rng, parameters...)
+function _predictive_draw(kernel, rng, parameters)
+    conditional = kernel(parameters...)
+    conditional isa MeasureBase.AbstractMeasure ||
+        throw(ArgumentError("a predictive kernel must return a MeasureBase measure"))
+    isone(MeasureBase.massof(conditional)) ||
+        throw(ArgumentError("a predictive kernel must return a normalized measure"))
+    rand(rng, conditional)
+end
 
 _sampling_seed(rng::AbstractRNG) = rand(rng, UInt64)
 _sampling_stream(rng::AbstractRNG, seed) = Xoshiro(seed)
@@ -37,9 +70,13 @@ function _estimates(
     initial = map(beliefs) do belief
         s = belief.statistic
         _applicable(s, law, scope) || return nothing
-        force_sampling && return NoAnalytic(s)
         try
-            _analytic(s, law, scope)
+            _check_moment(s, law, scope)
+            # Sampling cannot establish a population moment known to be undefined.
+            force_sampling && _moment_order(_statistic(s)) == 0 && return NoAnalytic(s)
+            estimate = _analytic(s, law, scope)
+            force_sampling && return NoAnalytic(s)
+            estimate
         catch error
             error isa InterruptException && rethrow()
             if error isa NoAnalytic ||
@@ -68,8 +105,14 @@ function _estimates(
         try
             key = s isa On ? _targetid(s.target) : nothing
             values = get!(projected, key) do
-                map(draw -> _sample_target(draw, scope, s), draws)
+                try
+                    map(draw -> _sample_target(draw, scope, s, rng), draws)
+                catch error
+                    error isa InterruptException && rethrow()
+                    EvaluationFailure(error)
+                end
             end
+            values isa EvaluationFailure && return values
             joint = s isa On && s.target isa Joint
             _sample_estimate(_statistic(s), values, sampling; joint)
         catch error

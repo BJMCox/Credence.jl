@@ -63,10 +63,18 @@ Ungrouped and combined result IDs have the form `(candidate_id, start_index)`.
 Marginal result IDs also include the target reference. The form
 `select(report, target, (candidate_id, start_index); ...)` selects a marginal result directly.
 
+For sampled results, pass retained validation to `compare(report; validation)` or use
+`compare(rng, report)` to draw a fresh validation batch. Comparison uses bounds on each
+scaled discrepancy. It reports dominance when one candidate's upper bounds are below
+the other's lower bounds, with a strict improvement in at least one target. Overlapping
+bounds can leave the ordering unresolved.
+
 ## Validation
 
 `validate(rng, report)` checks the retained measures again. By default, it uses analytic
-measure operations. An unavailable or failed operation gives an undefined check.
+measure operations and inherits the report's sampling plan for other statistics.
+Pass `sampling=nothing` to request analytic checks alone. An unavailable or failed
+operation gives an undefined check.
 
 For sampled event probabilities, `MonteCarlo(n; alpha)` draws independent samples and
 constructs Hoeffding bounds:
@@ -82,7 +90,8 @@ check = only(only(validation.checks))
 (; estimate=check.estimate, status=check.status)
 ```
 
-The error budget `alpha` is divided across all hard checks in the report. These bounds
+The error budget `alpha` is divided across all belief checks and retained results.
+Array evaluators further divide their budget across coordinates. These bounds
 assume independent draws from the candidate measure. Quantile checks use DKW enclosures.
 Sampled means and dispersion statistics have estimated intervals, which cannot certify
 hard requirements.
@@ -96,6 +105,21 @@ A check satisfies a hard requirement when its entire enclosure lies within the r
 region. A disjoint enclosure violates the requirement. Partial overlap is inconclusive.
 Evidence marked `:estimated` supports estimation rather than certification. Approximate
 comparisons with uncertain ordering remain unresolved.
+
+These simultaneous enclosures also support candidate comparison. Every reported ordering
+follows from the same set of bounds, so comparisons share the report's error budget.
+Custom evaluators that return statistical enclosures must supply their own joint coverage guarantee.
+
+## Inspecting results
+
+`fit_summary(report)` returns rows containing fitted parameters, solver outcomes, and errors.
+`belief_summary(validation)` returns achieved statistics, uncertainty bounds, status, and
+scaled discrepancies alongside the original judgments. Set `result_id` to inspect one result:
+
+```@example validation
+fit_summary(report)
+belief_summary(validation; result_id=(:normal, 1))
+```
 
 ## Selection
 

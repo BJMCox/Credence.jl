@@ -75,10 +75,13 @@ For numerical fitting, load Optimization.jl and call `fit(rng, problem, algorith
 
 The [signal-background example](@ref scalar-tutorial) defines a rare-event model and elicits
 priors for its six hyperparameters. It includes candidate families, a revised judgment,
-prior selection, and prior predictive checks, with all definitions on the page.
+prior selection and prior predictive checks, with all definitions on the page.
 
 The [Wren example](@ref wren-tutorial) elicits a joint regression prior and uses it to
 sample a posterior with NUTS.
+
+The [FlatPPL example](@ref flatppl-tutorial) elicits detector efficiency and event rate,
+exports the fitted prior, and defines a counting likelihood in FlatPPL.
 
 [Named inputs](@ref input-guide) describes parameter references, arrays, and joint beliefs.
 [Beliefs and validation](@ref validation-guide) defines the fitting objective, candidate
@@ -87,5 +90,5 @@ contains the constructor and method documentation.
 
 ## Development status
 
-Credence is a prototype. Planned work includes predictive fitting, formula syntax, tilting,
-propagation of judgment uncertainty, portable persistence, interactive controls, and FlatPPL export.
+Credence is a prototype. Planned work includes formula syntax, tilting,
+propagation of judgment uncertainty, and interactive controls.

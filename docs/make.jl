@@ -24,7 +24,7 @@ function self_contained(source)
     return source
 end
 
-for name in ("scalar", "wren")
+for name in ("scalar", "wren", "flatppl")
     options = if name == "wren"
         (; codefence="```julia" => "```")
     else
@@ -58,11 +58,15 @@ makedocs(;
     pages=[
         "Getting started" => "index.md",
         "Examples" => [
-            "Signal-background elicitation" => "tutorials/scalar.md",
+            "Base elicitation" => "tutorials/scalar.md",
             "Wren integration" => "tutorials/wren.md",
+            "FlatPPL integration" => "tutorials/flatppl.md",
         ],
-        "Guide" =>
-            ["Named inputs" => "inputs.md", "Beliefs and validation" => "validation.md"],
+        "Guide" => [
+            "Named inputs" => "inputs.md",
+            "Candidate families" => "families.md",
+            "Beliefs and validation" => "validation.md",
+        ],
         "Reference" => "api.md",
     ],
     plugins=[CodeBlocks()],
