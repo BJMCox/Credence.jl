@@ -97,7 +97,12 @@ _session_digest(document) =
 function _session_environment()
     files=String[]
     for directory in (@__DIR__, joinpath(dirname(@__DIR__), "ext"))
-        append!(files, filter(path -> endswith(path, ".jl"), readdir(directory; join=true)))
+        for (root, _, names) in walkdir(directory)
+            append!(
+                files,
+                (joinpath(root, name) for name in names if endswith(name, ".jl")),
+            )
+        end
     end
     contents=join(
         (
@@ -390,6 +395,7 @@ function _session_family(x, callbacks)
     parentmodule(typeof(x))===Credence || throw(
         ArgumentError("custom family definitions need a registered candidate builder"),
     )
+    _compound_validate(x)
     fields = NamedTuple{fieldnames(typeof(x))}(
         Tuple(getfield(x, i) for i in 1:fieldcount(typeof(x))),
     )
@@ -733,6 +739,31 @@ function _session_unpack_family(data, callbacks)
            (:MvNormalFamily, :MvLogNormalFamily, :DirichletFamily, :MvStudentTFamily)
         rest=Base.structdiff(fields, (dimension=fields.dimension,))
         return getfield(Credence, name)(fields.dimension; rest...)
+    elseif name in (
+        :HorseshoeFamily,
+        :RegularizedHorseshoeFamily,
+        :R2D2Family,
+        :DirichletLaplaceFamily,
+        :NormalGammaFamily,
+        :GeneralizedDoubleParetoFamily,
+    )
+        rest = Base.structdiff(fields, (dimension=nothing,))
+        return getfield(Credence, name)(fields.dimension; rest...)
+    elseif name == :GroupHorseshoeFamily
+        return GroupHorseshoeFamily(fields.groups; scale=fields.scale, starts=fields.starts)
+    elseif name == :FunctionalHorseshoeFamily
+        return FunctionalHorseshoeFamily(
+            fields.design,
+            fields.baseline;
+            baseline_scale=fields.baseline_scale,
+            scale=fields.scale,
+            a=fields.a,
+            b=fields.b,
+            starts=fields.starts,
+        )
+    elseif name == :MultiplicativeGammaFamily
+        rest = Base.structdiff(fields, (rows=nothing, columns=nothing))
+        return MultiplicativeGammaFamily(fields.rows, fields.columns; rest...)
     elseif name in (:NormalFamily, :LogNormalFamily)
         return getfield(Credence, name)(; fields...)
     end

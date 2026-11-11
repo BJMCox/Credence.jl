@@ -1,5 +1,6 @@
 _statistic(s::On) = s.statistic
 _statistic(s) = s
+_check_moment(statistic, law, scope) = nothing
 _analytic(s, law, scope) = evaluate(s, law)
 _analytic(s::On, law, scope) = _analytic_on(s.statistic, law, scope, s.target)
 _sample_target(draw, scope, s) = draw
@@ -69,8 +70,9 @@ function _estimates(
     initial = map(beliefs) do belief
         s = belief.statistic
         _applicable(s, law, scope) || return nothing
-        force_sampling && return NoAnalytic(s)
         try
+            _check_moment(s, law, scope)
+            force_sampling && return NoAnalytic(s)
             _analytic(s, law, scope)
         catch error
             error isa InterruptException && rethrow()

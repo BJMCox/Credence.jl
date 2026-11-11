@@ -297,6 +297,7 @@ function _fit(rng, problem, ::Evaluate; sampling=nothing)
     results = map(problem.candidates) do candidate
         map(Tuple(enumerate(candidate.starts))) do (index, point)
             try
+                _validate_candidate(candidate)
                 values = copy(_flatten(point))
                 _result(candidate, index, values, candidate.build(values), nothing)
             catch error
@@ -306,6 +307,18 @@ function _fit(rng, problem, ::Evaluate; sampling=nothing)
         end
     end
     FitReport(problem, Tuple(Iterators.flatten(results)), sampling, nothing)
+end
+
+function _validate_candidate(candidate)
+    if candidate isa Candidate
+        _compound_validate(candidate.family)
+        if candidate.build isa IndependentBuilder
+            foreach(_validate_candidate, candidate.build.parts)
+        end
+    else
+        _validate_candidate(candidate.report.results[candidate.index].candidate)
+    end
+    nothing
 end
 
 function _loss(problem, prior; scope=nothing, sampling=nothing, rng=nothing)

@@ -39,6 +39,7 @@ function Credence.fit(
         end
         map(enumerate(candidate.starts)) do (index, start)
             try
+                Credence._validate_candidate(candidate)
                 point = copy(Credence._flatten(start))
                 if isempty(point)
                     return Credence._result(

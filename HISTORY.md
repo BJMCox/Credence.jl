@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+  - Add continuous compound shrinkage priors with joint latent scales, fitting, saved sessions, and noncentred Plaice coordinates.
   - Add positive, heavy-tailed, simplex, and multivariate Student-t families with fixed-parameter options.
   - Evaluate Dirichlet and Student-t marginals and component quantiles analytically.
   - Elicit predictive observations through conditional measures or explicit RNG simulators.

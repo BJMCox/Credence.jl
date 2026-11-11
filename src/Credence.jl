@@ -31,18 +31,32 @@ export GammaFamily, WeibullFamily, ExponentialFamily, StudentTFamily, CauchyFami
 export LaplaceFamily,
     HalfNormalFamily, HalfStudentTFamily, DirichletFamily, MvStudentTFamily
 export Predictive, save_session, load_session
+export HorseshoeFamily, RegularizedHorseshoeFamily, R2D2Family, DirichletLaplaceFamily
+export GroupHorseshoeFamily, FunctionalHorseshoeFamily, MultiplicativeGammaFamily
+export NormalGammaFamily, GeneralizedDoubleParetoFamily
 
 include("statistics.jl")
 include("beliefs.jl")
 include("targets.jl")
 include("fitting.jl")
 include("families.jl")
+include("compound.jl")
+include("compound/horseshoe.jl")
+include("compound/r2d2.jl")
+include("compound/dirichlet_laplace.jl")
+include("compound/group_horseshoe.jl")
+include("compound/functional_horseshoe.jl")
+include("compound/multiplicative_gamma.jl")
+include("compound/normal_gamma.jl")
+include("compound/generalized_double_pareto.jl")
 include("composition.jl")
 include("recordmap.jl")
 include("evaluation.jl")
+include("compound_moments.jl")
 include("validation.jl")
 include("reporting.jl")
 include("flatppl.jl")
+include("compound_flatppl.jl")
 include("persistence.jl")
 
 end

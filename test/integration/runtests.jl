@@ -14,6 +14,7 @@ using LogDensityProblems: LogDensityProblems
 using Wren: @wren, @observe, VecModel, FromPrior, nuts, AutoEnzyme, Reverse
 import WrenCore
 using VarNames: @vn
+include("../compound/fixtures.jl")
 
 const covariance = [1.0 0.4; 0.4 0.8]
 
@@ -22,6 +23,46 @@ function joint_prior(p)
         beta=MeasureBase.asmeasure(MvNormal(p[1:2], covariance)),
         sigma=MeasureBase.asmeasure(LogNormal(p[3], 0.4)),
     ))
+end
+
+@wren function compound_prior_model(prior, observed)
+    theta ~ prior
+    @observe observed ~ Normal(sum(theta.coefficients), 1.0)
+end
+
+@testset "Compound priors retain Wren gradients" begin
+    for (index, family) in enumerate(compound_cases())
+        problem = Elicitation((), (:theta => (:law => family,),))
+        prior = only(fit(Xoshiro(3100+index), problem).results).measure
+        model = compound_prior_model(prior, 0.4)
+        z = collect(range(0.1, 0.5; length=Plaice.unconstrained_vec_length(prior)))
+        forward =
+            VecModel(model, AutoForwardDiff(); latent_source=FromPrior(Xoshiro(3200+index)))
+        expected_value, expected_gradient =
+            LogDensityProblems.logdensity_and_gradient(forward, z)
+        copies = filter(!=(:prior), WrenCore._copied_args(model))
+        readonly = WrenCore._with_copied_args(model, copies)
+        enzyme = VecModel(
+            readonly,
+            AutoEnzyme(; mode=Reverse);
+            latent_source=FromPrior(Xoshiro(3300+index)),
+            reduce_copies=false,
+        )
+        value, gradient = LogDensityProblems.logdensity_and_gradient(enzyme, z)
+        @test value ≈ expected_value
+        @test gradient ≈ expected_gradient
+        if family isa Union{RegularizedHorseshoeFamily,R2D2Family,FunctionalHorseshoeFamily}
+            chain = nuts(
+                Xoshiro(3400+index),
+                readonly,
+                16;
+                adtype=AutoEnzyme(; mode=Reverse),
+                reduce_copies=false,
+                progress=false,
+            )
+            @test size(chain) == (16, 1)
+        end
+    end
 end
 
 @wren function scalar_prior(prior)

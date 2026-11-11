@@ -357,4 +357,14 @@ function Credence._flatppl(prior::Distributions.Truncated, path)
     ")))"
 end
 
+include("compound/horseshoe.jl")
+include("compound/r2d2.jl")
+include("compound/dirichlet_laplace.jl")
+include("compound/group_horseshoe.jl")
+include("compound/functional_horseshoe.jl")
+include("compound/multiplicative_gamma.jl")
+include("compound/normal_gamma.jl")
+include("compound/generalized_double_pareto.jl")
+include("compound_flatppl.jl")
+
 end
