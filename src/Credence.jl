@@ -25,6 +25,7 @@ export Joint, Derived, Correlation, Covariance, CorrelationMatrix, CovarianceMat
 export NormalFamily, LogNormalFamily, ScaledBetaFamily, TruncatedFamily, IIDFamily
 export MvNormalFamily, MvLogNormalFamily, Independent, AllCombinations, unlock
 export diagnostics, flatppl
+export fit_summary, belief_summary
 
 include("statistics.jl")
 include("beliefs.jl")
@@ -35,6 +36,7 @@ include("composition.jl")
 include("recordmap.jl")
 include("evaluation.jl")
 include("validation.jl")
+include("reporting.jl")
 include("flatppl.jl")
 
 end

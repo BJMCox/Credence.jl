@@ -59,13 +59,15 @@ nothing # hide
 
 # ## Fit the candidate priors
 #
-# Fit both combinations to the judgments. The summaries show the largest scaled residual,
-# solver outcome, and achieved statistics for each starting point.
+# Fit both combinations and validate their achieved statistics. `fit_summary` lists
+# fitted parameters and solver outcomes. `belief_summary` lists the achieved judgments
+# and their scaled discrepancies for a chosen result.
 
 initial_report =
     fit(Xoshiro(42), initial_problem, NelderMead(); maxiters=20000, g_tol=1e-12)
-display(collect(prior_summary(initial_report)))
-display(collect(target_summary(initial_report, (:beta_normal, 1))))
+initial_validation = validate(Xoshiro(43), initial_report)
+display(fit_summary(initial_report))
+display(belief_summary(initial_validation; result_id=(:beta_normal, 1)))
 
 # ## Review a judgment
 #
@@ -91,10 +93,11 @@ problem =
     replace(initial_problem, :S => Approximate(:upper, Quantile(0.95), 3.5; scale=1.0))
 report = fit(Xoshiro(42), problem, NelderMead(); maxiters=20000, g_tol=1e-12)
 display((original=initial_problem[:S, :upper].target, revised=problem[:S, :upper].target))
-display(collect(prior_summary(report)))
+validation = validate(Xoshiro(43), report)
+display(fit_summary(report))
 all(result -> result.error === nothing, report.results) ||
     error("Inspect failed starts before continuing.")
-display(collect(target_summary(report, (:beta_normal, 1))))
+display(belief_summary(validation; result_id=(:beta_normal, 1)))
 comparison = compare(report)
 display(comparison.incomparable)
 
@@ -131,8 +134,8 @@ nothing # hide
 # `:target`, and the candidate supports enforce the parameter bounds. Review the achieved
 # values and family assumptions before recording a selection.
 
-validation = validate(Xoshiro(43), report)
-display([[check.status for check in row] for row in validation.checks])
+display(validation)
+display(belief_summary(validation; result_id=(:beta_normal, 1)))
 decision = (
     id=(:beta_normal, 1),
     rationale="The expert accepts the bounded Beta hyperparameters and calibrated Normal location after reviewing both alternatives.",

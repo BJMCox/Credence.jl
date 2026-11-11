@@ -22,7 +22,9 @@ function Candidate(
     scope=nothing,
     requirements=(),
 )
-    points = if starts isa AbstractVector{<:Number}
+    points = if starts isa NamedTuple
+        (starts,)
+    elseif starts isa AbstractVector{<:Number}
         (Tuple(starts),)
     else
         Tuple(p isa NamedTuple ? p : Tuple(p) for p in starts)
@@ -187,14 +189,62 @@ mutable struct FitReport{P,R,S,N}
 end
 FitReport(problem, results) = FitReport(problem, results, nothing, nothing)
 
-"""`diagnostics(problem_or_report)` reports input inconsistencies and preserves the supplied targets."""
+"""
+    diagnostics(problem_or_report)
+
+Report matrix inconsistencies and conflicts between ordered quantiles or nested event
+probabilities. Each row contains `id` and `code`. A cross-belief conflict identifies
+the pair of belief IDs. The submitted judgments remain unchanged.
+"""
 function diagnostics(problem::Elicitation)
-    Tuple(
+    local_checks = Tuple(
         (id=b.id, code=code) for b in problem.beliefs if b isa Approximate for
         code in b.diagnostics
     )
+    conflicts = []
+    beliefs = problem.beliefs
+    for i in eachindex(beliefs), j in (i+1):length(beliefs)
+        a, b = beliefs[i], beliefs[j]
+        _judgment_scope(a.statistic) == _judgment_scope(b.statistic) || continue
+        sa, sb = _base_statistic(a.statistic), _base_statistic(b.statistic)
+        code = if sa isa Quantile && sb isa Quantile
+            :inconsistent_quantiles
+        elseif sa isa Probability{<:IntervalEvent} && sb isa Probability{<:IntervalEvent}
+            :inconsistent_probabilities
+        else
+            continue
+        end
+        if (_statistic_order(sa, sb) && _judgment_conflict(a, b)) ||
+           (_statistic_order(sb, sa) && _judgment_conflict(b, a))
+            push!(conflicts, (id=(a.id, b.id), code=code))
+        end
+    end
+    (local_checks..., conflicts...)
 end
 diagnostics(report::FitReport) = diagnostics(report.problem)
+
+_judgment_scope(s) = nothing
+_judgment_scope(s::On) = _targetid(s.target)
+_statistic_order(a::Quantile, b::Quantile) = a.p <= b.p
+_statistic_order(a::Probability, b::Probability) =
+    b.event.lower <= a.event.lower && a.event.upper <= b.event.upper
+_judgment_bounds(b::Approximate) = (b.target, b.target)
+_judgment_bounds(b::Hard) = _bounds(b.relation)
+function _judgment_conflict(a, b)
+    lower, _ = _judgment_bounds(a)
+    _, upper = _judgment_bounds(b)
+    if lower isa AbstractArray && upper isa AbstractArray && axes(lower) != axes(upper)
+        return false
+    end
+    template = lower
+    if upper isa AbstractArray
+        template = upper
+    end
+    any(_indices(template)) do index
+        lo, hi = _at(lower, index), _at(upper, index)
+        !_absent(lo) && !_absent(hi) && lo > hi
+    end
+end
 
 function _result(candidate, index, parameters, prior, solver)
     if candidate.lower !== nothing

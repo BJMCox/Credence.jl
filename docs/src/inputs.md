@@ -84,6 +84,9 @@ Here the parameters are log shapes, so exponentiation gives positive Beta shapes
 flattens the record for optimization and restores its names when calling the builder and
 recording the fitted parameters. Builders can also accept positional parameter vectors.
 
+A single named start can be passed directly as `(log_alpha=0.5, log_beta=1.0)`.
+Use a tuple of such records to supply several starts.
+
 ## Joint and derived quantities
 
 Place beliefs about several quantities under `Joint`. Use `Derived` for a function of
@@ -118,6 +121,11 @@ one triangle with the fixed unit diagonal excluded.
 target, mirrored entries must agree in value, bounds, scales, and omission patterns.
 Other matrix-valued statistics use every supplied entry. `diagnostics(problem)` reports
 inconsistent complete covariance or correlation targets and preserves the submitted values.
+
+Diagnostics also identify reversed quantile judgments and probabilities that contradict
+event inclusion. For example, a probability assigned to `(0, 1]` must be no larger than
+the probability assigned to `(-1, 2]`. A diagnostic identifies the pair of beliefs involved.
+Approximate targets remain available for fitting and discussion after a conflict is reported.
 
 ## Combining families
 

@@ -57,10 +57,10 @@ beliefs = (
 problem = Elicitation(beliefs, [candidate])
 report = fit(Xoshiro(1001), problem, NelderMead(); maxiters=3000, g_tol=1e-14)
 validation = validate(Xoshiro(1002), report)
-display(validation.checks)
+display(belief_summary(validation))
 
 # These targets correspond to `p.beta = [0.2, -0.1]` and `p.log_sigma = -0.3`.
-# Check the achieved statistics in `validation.checks`. Their status is `:target` because
+# Check the achieved statistics in `belief_summary(validation)`. Their status is `:target` because
 # the beliefs specify approximate targets. Selection records acceptance of this fit and its assumptions.
 
 selection = select(

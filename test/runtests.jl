@@ -9,3 +9,6 @@ include("inputs.jl")
 include("integration.jl")
 
 include("flatppl.jl")
+include("judgment_diagnostics.jl")
+include("sampled_comparison.jl")
+include("reporting.jl")

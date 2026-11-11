@@ -169,28 +169,3 @@ end
 nothing # hide
 
 # Each combination lists one family for each parameter. `Independent` forms their product.
-# The following functions summarize fitted targets and solver outcomes for these combinations.
-
-function target_summary(report, id)
-    result = only(filter(r -> r.id == id, report.results))
-    return map(report.problem.beliefs) do belief
-        achieved = evaluate(belief.statistic, result.measure).value
-        (; id=belief.id, target=belief.target, achieved, scale=belief.scale)
-    end
-end
-
-function prior_summary(report)
-    return map(report.results) do result
-        if result.error !== nothing
-            return (; id=result.id, error=result.error)
-        end
-        rows = target_summary(report, result.id)
-        residual = maximum(abs(row.achieved - row.target) / row.scale for row in rows)
-        return (;
-            id=result.id,
-            max_scaled_residual=residual,
-            solver=string(result.solver.retcode),
-        )
-    end
-end
-nothing # hide
