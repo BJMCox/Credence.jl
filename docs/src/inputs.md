@@ -157,3 +157,18 @@ reuse the values computed from those draws.
 Fitting reuses fixed random inputs to evaluate its objective. Validation draws a fresh
 batch and records its seed. See [Beliefs and validation](@ref validation-guide) for the
 uncertainty attached to sampled statistics.
+
+## FlatPPL export
+
+`flatppl(selection)` returns a FlatPPL expression for the selected measure.
+`flatppl(prior)` accepts a MeasureBase measure directly. Export follows the measure's
+structure, so a custom candidate builder can use the same translations as a standard family.
+
+Translations cover standard scalar laws, supported Distributions wrappers, named products,
+scalar-factor vectors, and iid arrays. Multivariate Normal and LogNormal translations
+preserve covariance. Truncated laws retain their normalization and support bounds.
+A measure with an unsupported transform or component requires an additional translation
+method. The error identifies that component's path.
+
+The [signal-background example](@ref scalar-tutorial) writes a complete FlatPPL prior file.
+The [Wren example](@ref wren-tutorial) exports a prior with correlated coefficients.

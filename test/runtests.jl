@@ -7,3 +7,5 @@ include("discrete.jl")
 include("optimization.jl")
 include("inputs.jl")
 include("integration.jl")
+
+include("flatppl.jl")

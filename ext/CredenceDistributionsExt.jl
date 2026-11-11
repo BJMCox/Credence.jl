@@ -136,4 +136,38 @@ function Credence._evaluate(
     return Credence._estimate(probability)
 end
 
+Credence._flatppl(prior::AsMeasure, path) = Credence._flatppl(prior.obj, path)
+for (law, name) in
+    ((Normal, "Normal"), (LogNormal, "LogNormal"), (Beta, "Beta"), (MvNormal, "MvNormal"))
+    @eval function Credence._flatppl(prior::$law, path)
+        arguments = map(Distributions.params(prior)) do parameter
+            Credence._flatppl_value(parameter, path)
+        end
+        $name * "(" * join(arguments, ", ") * ")"
+    end
+end
+function Credence._flatppl(prior::MvLogNormal, path)
+    location, covariance = Distributions.params(prior)
+    "pushfwd(fn(exp.(_)), " * Credence._flatppl(MvNormal(location, covariance), path) * ")"
+end
+function Credence._flatppl(prior::LocationScale, path)
+    location, scale, base = Distributions.params(prior)
+    "locscale(" *
+    Credence._flatppl(base, path) *
+    ", " *
+    Credence._flatppl_value(location, path) *
+    ", " *
+    Credence._flatppl_value(scale, path) *
+    ")"
+end
+function Credence._flatppl(prior::Distributions.Truncated, path)
+    "normalize(truncate(" *
+    Credence._flatppl(prior.untruncated, path) *
+    ", interval(" *
+    Credence._flatppl_value(prior.lower, path) *
+    ", " *
+    Credence._flatppl_value(prior.upper, path) *
+    ")))"
+end
+
 end

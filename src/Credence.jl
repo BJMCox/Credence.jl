@@ -24,7 +24,7 @@ export Analytic, MonteCarlo, Check, Validation, validate, select, measure
 export Joint, Derived, Correlation, Covariance, CorrelationMatrix, CovarianceMatrix
 export NormalFamily, LogNormalFamily, ScaledBetaFamily, TruncatedFamily, IIDFamily
 export MvNormalFamily, MvLogNormalFamily, Independent, AllCombinations, unlock
-export diagnostics
+export diagnostics, flatppl
 
 include("statistics.jl")
 include("beliefs.jl")
@@ -35,5 +35,6 @@ include("composition.jl")
 include("recordmap.jl")
 include("evaluation.jl")
 include("validation.jl")
+include("flatppl.jl")
 
 end
