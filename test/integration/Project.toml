@@ -29,6 +29,7 @@ WrenCore = {url = "https://github.com/JuliaBayes/Wren.jl", subdir = "WrenCore", 
 WrenDists = {url = "https://github.com/JuliaBayes/Wren.jl", subdir = "WrenDists", rev = "d402e30ec74153259e871b94b08505f029ad311c"}
 
 [compat]
+Distributions = "0.25.134"
 Enzyme = "0.13.218"
 ForwardDiff = "1.4.7"
 Optimization = "5.9.1"
