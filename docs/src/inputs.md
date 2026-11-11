@@ -178,5 +178,5 @@ preserve covariance. Truncated laws retain their normalization and support bound
 A measure with an unsupported transform or component requires an additional translation
 method. The error identifies that component's path.
 
-The [signal-background example](@ref scalar-tutorial) writes a complete FlatPPL prior file.
-The [Wren example](@ref wren-tutorial) exports a prior with correlated coefficients.
+The [FlatPPL example](@ref flatppl-tutorial) exports an elicited joint prior and uses it
+in a complete observation model, with a density check against Julia.

@@ -144,25 +144,6 @@ selection = select(report, decision.id; validation, rationale=decision.rationale
 prior = measure(selection)
 nothing # hide
 
-# ## Export the prior to FlatPPL
-#
-# `flatppl(selection)` produces a measure expression for the selected six-parameter
-# hyperprior. The expression preserves the parameter names, distribution parameters,
-# support bounds, and independence assumptions. Save it as a FlatPPL source file:
-
-prior_expression = flatppl(selection)
-write(
-    "elicitation-output/signal-prior.flatppl",
-    "flatppl_compat = \"0.1\"\n\nprior = " * prior_expression * "\n",
-)
-println(prior_expression)
-nothing # hide
-
-# [Download the exported hyperprior](elicitation-output/signal-prior.flatppl).
-# The binding `prior` defines the joint measure in FlatPPL. Conditional background rates
-# can then use its `m_B` and `sigma_B` parameters in the observation model.
-# `flatppl(prior)` also accepts the MeasureBase measure directly.
-#
 # ## Generate data from the model
 #
 # The selected measure describes the six hyperparameters. Draw background rates conditional

@@ -72,17 +72,6 @@ selection = select(
 prior = measure(selection)
 display(rand(Xoshiro(1004), prior))
 
-# ## Export the joint prior to FlatPPL
-#
-# The same measure can be expressed in FlatPPL with `flatppl(prior)`. The exported
-# coefficient distribution retains its full covariance matrix, and `sigma` retains
-# its LogNormal law. The named product preserves independence between these two factors.
-
-println(flatppl(prior))
-
-# Use this expression as the right-hand side of a FlatPPL measure binding, such as
-# `prior = ...`. This exports the elicited prior for use in another model.
-#
 # A draw from `prior` is a named tuple containing `beta` and `sigma`.
 #
 # ## Condition on an observation

@@ -9,6 +9,11 @@ that identifies the component requiring a translator.
 flatppl(prior::MeasureBase.AbstractMeasure) = _flatppl(prior, "prior")
 flatppl(selection::Selection) = flatppl(measure(selection))
 
+function _flatppl_block(open, parts, close)
+    lines = ("    " * replace(part, "\n" => "\n    ") for part in parts)
+    open * "\n" * join(lines, ",\n") * "\n" * close
+end
+
 _flatppl(prior, path) =
     throw(ArgumentError("no FlatPPL translation for $(typeof(prior)) at $path"))
 _flatppl(::MeasureBase.StdNormal, path) = "Normal(0.0, 1.0)"
@@ -44,15 +49,14 @@ function _flatppl_value(x::AbstractVector, path)
 end
 function _flatppl_value(x::AbstractMatrix, path)
     _flatppl_axes(x, path)
-    "rowstack([" *
-    join(
+    _flatppl_block(
+        "rowstack([",
         (
             _flatppl_value(collect(row), "$path[$i, :]") for
             (i, row) in enumerate(eachrow(x))
         ),
-        ", ",
-    ) *
-    "])"
+        "])",
+    )
 end
 
 function _flatppl(prior::MeasureBase.AbstractProductMeasure, path)
@@ -65,15 +69,17 @@ function _flatppl_product(parts::NamedTuple, path)
             throw(ArgumentError("field $name at $path is not a FlatPPL identifier"))
         string(name) * " = " * _flatppl(getproperty(parts, name), "$path.$name")
     end
-    "joint(" * join(fields, ", ") * ")"
+    _flatppl_block("joint(", fields, ")")
 end
 function _flatppl_product(parts::AbstractVector, path)
     _flatppl_axes(parts, path)
     all(part -> MeasureBase.mspace_elsize(part) == (), parts) ||
         throw(ArgumentError("FlatPPL vector products require scalar factors at $path"))
-    "joint(" *
-    join((_flatppl(part, "$path[$i]") for (i, part) in enumerate(parts)), ", ") *
-    ")"
+    _flatppl_block(
+        "joint(",
+        (_flatppl(part, "$path[$i]") for (i, part) in enumerate(parts)),
+        ")",
+    )
 end
 _flatppl_product(parts, path) = _flatppl(parts, path)
 function _flatppl(prior::MeasureBase.PowerMeasure, path)

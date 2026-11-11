@@ -20,7 +20,9 @@ end
         beta=asmeasure(MvNormal([0.2, -0.1], [1.0 0.4; 0.4 0.8])),
         sigma=asmeasure(LogNormal(-0.3, 0.4)),
     ))
-    exported = FlatPPLExpressions.evaluate(flatppl(prior))
+    source = flatppl(prior)
+    @test occursin('\n', source)
+    exported = FlatPPLExpressions.evaluate(source)
     for point in (
         (S=1.2, mu=125.0, beta=[0.2, -0.1], sigma=exp(-0.3)),
         (S=7.5, mu=122.1, beta=[-1.0, 0.9], sigma=2.0),
