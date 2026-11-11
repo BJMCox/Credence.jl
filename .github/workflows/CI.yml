@@ -40,3 +40,5 @@ jobs:
       - name: Install development measure APIs
         run: julia --project=. dev/setup.jl
       - uses: julia-actions/julia-runtest@e89ac6c957d7c4d7e0cb3162f12d8290a008f9d1 # 1.13.0
+        with:
+          force_latest_compatible_version: false
