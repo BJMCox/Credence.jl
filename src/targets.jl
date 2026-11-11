@@ -208,7 +208,7 @@ function _analytic_on(statistic, law, scope, target::Joint)
             return _estimate(sqrt.(diag(_covariance(law))))
         end
         if statistic isa Union{Covariance,Correlation}
-            all(x -> x isa Number, mean(law)) ||
+            all(x -> x isa Number, _finite_mean(law)) ||
                 throw(DimensionMismatch("pairwise quantities must be scalar"))
         end
         return evaluate(statistic, law)
@@ -219,7 +219,7 @@ end
 
 function _joint_estimate(statistic, parts, law, scope, target)
     if statistic isa Union{Covariance,Correlation}
-        all(p -> mean(p) isa Number, parts) ||
+        all(p -> _finite_mean(p) isa Number, parts) ||
             throw(DimensionMismatch("pairwise quantities must be scalar"))
     end
     if _base_statistic(statistic) isa
@@ -235,7 +235,8 @@ function _joint_estimate(statistic, parts, law, scope, target)
             throw(DimensionMismatch("pairwise statistics require two scalars"))
         value = matrix[1, 2]
         if statistic isa Correlation
-            value /= sqrt(matrix[1, 1]*matrix[2, 2])
+            value /= _estimate(sqrt(matrix[1, 1])).value
+            value /= _estimate(sqrt(matrix[2, 2])).value
         end
         return _estimate(value)
     elseif statistic isa Mean

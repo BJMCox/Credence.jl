@@ -72,8 +72,11 @@ function _estimates(
         _applicable(s, law, scope) || return nothing
         try
             _check_moment(s, law, scope)
+            # Sampling cannot establish a population moment known to be undefined.
+            force_sampling && _moment_order(_statistic(s)) == 0 && return NoAnalytic(s)
+            estimate = _analytic(s, law, scope)
             force_sampling && return NoAnalytic(s)
-            _analytic(s, law, scope)
+            estimate
         catch error
             error isa InterruptException && rethrow()
             if error isa NoAnalytic ||
