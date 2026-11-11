@@ -16,6 +16,7 @@ _session_failure_builder(p) = error("Rejected candidate")
 _session_other_builder(p) = asmeasure(Normal(p.location-1.0, exp(p.log_scale)))
 const _session_global_shift=Ref(0.0)
 _session_global_builder(p) = asmeasure(Normal(p.location+_session_global_shift[], 1.0))
+const _session_same_line = (_ -> StdNormal(), _ -> StdUniform())
 
 @testset "Portable elicitation session roundtrip" begin
     beliefs = (
@@ -133,6 +134,42 @@ end
         save_session(path, loaded; callbacks)
         repeated=load_session(path; callbacks)
         @test repeated.report.results[2].error.type == loaded.report.results[2].error.type
+    end
+end
+
+@testset "Callbacks on one source line retain separate identities" begin
+    original, changed = _session_same_line
+    problem = Elicitation(
+        (Hard(:mean, Mean(), Between(-0.1, 0.1)),),
+        (Candidate(:normal, original, [0.0]),),
+    )
+    report = fit(Xoshiro(98), problem)
+    validation = validate(Xoshiro(99), report)
+    selection = select(report, (:normal, 1); validation, rationale="Centered prior")
+    mktempdir() do directory
+        path = joinpath(directory, "callback.toml")
+        save_session(
+            path,
+            problem;
+            report,
+            validation,
+            selections=(selection,),
+            callbacks=(law=original,),
+        )
+        @test mean(
+            measure(only(load_session(path; callbacks=(law=original,)).selections)),
+        ) == 0
+        @test_throws ArgumentError load_session(path; callbacks=(law=changed,))
+    end
+end
+
+@testset "Saved linear ranges preserve their lengths and values" begin
+    problem = Elicitation((), ())
+    ranges = (LinRange(0.0, 1.0, 0), LinRange(2.0, 2.0, 1), LinRange(1.0, 0.0, 5))
+    mktempdir() do directory
+        path = joinpath(directory, "ranges.toml")
+        save_session(path, problem; metadata=(ranges=ranges,))
+        @test isequal(load_session(path).metadata.ranges, ranges)
     end
 end
 

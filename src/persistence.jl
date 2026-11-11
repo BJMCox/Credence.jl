@@ -212,6 +212,12 @@ _session_pack(x::AbstractRange, callbacks) = _session_tag(
     step=_session_pack(step(x), callbacks),
     last=_session_pack(last(x), callbacks),
 )
+_session_pack(x::LinRange, callbacks) = _session_tag(
+    "range";
+    first=_session_pack(first(x), callbacks),
+    last=_session_pack(last(x), callbacks),
+    length=length(x),
+)
 function _session_pack(x::AbstractArray, callbacks)
     axes(x) == map(Base.OneTo, size(x)) ||
         throw(ArgumentError("saved arrays need one-based axes"))
@@ -569,10 +575,12 @@ function _session_unpack(data, callbacks)
     tag == "dictionary" &&
         return Dict(_session_unpack(value, callbacks) for value in data["values"])
     tag == "colon" && return Colon()
-    tag == "range" && return _session_unpack(data["first"], callbacks):_session_unpack(
-        data["step"],
-        callbacks,
-    ):_session_unpack(data["last"], callbacks)
+    if tag == "range"
+        first = _session_unpack(data["first"], callbacks)
+        last = _session_unpack(data["last"], callbacks)
+        haskey(data, "length") && return LinRange(first, last, data["length"])
+        return first:_session_unpack(data["step"], callbacks):last
+    end
     if tag == "array"
         T=_session_type(data["element"])
         return reshape(
@@ -838,19 +846,36 @@ function _session_callback_entry(entry)
     end
     entry, nothing
 end
+# Generated helper names vary across processes. Their implementations use the
+# explicit reconstruction version already required for external helpers.
+_session_callback_code(value) = value
+_session_callback_code(value::AbstractVector) = map(_session_callback_code, value)
+_session_callback_code(value::GlobalRef) =
+    Base.isgensym(value.name) ? GlobalRef(value.mod, Symbol("#generated")) : value
+_session_callback_code(value::Expr) =
+    Expr(value.head, map(_session_callback_code, value.args)...)
+_session_callback_code(value::Core.ReturnNode) =
+    isdefined(value, :val) ? Core.ReturnNode(_session_callback_code(value.val)) : value
+_session_callback_code(value::Core.GotoIfNot) =
+    Core.GotoIfNot(_session_callback_code(value.cond), value.dest)
+_session_callback_code(value::QuoteNode) = QuoteNode(_session_callback_code(value.value))
+
 function _session_callback_fingerprint(callback, version, callbacks)
     recipes=map(collect(methods(callback))) do method
+        recipe = Dict{String,Any}(
+            "lowered" =>
+                repr(_session_callback_code(Base.uncompressed_ast(method).code)),
+            "arguments" => method.nargs,
+        )
         file=Base.find_source_file(String(method.file))
         if file!==nothing && isfile(file)
-            return Dict(
-                "source"=>bytes2hex(SHA.sha256(replace(read(file, String), "\r\n"=>"\n"))),
-                "line"=>method.line,
-                "arguments"=>method.nargs,
-            )
-        end
-        version===nothing &&
+            recipe["source"] =
+                bytes2hex(SHA.sha256(replace(read(file, String), "\r\n"=>"\n")))
+            recipe["line"] = method.line
+        elseif version === nothing
             throw(ArgumentError("REPL callbacks need an explicit reconstruction version"))
-        Dict("lowered"=>repr(Base.uncompressed_ast(method).code), "arguments"=>method.nargs)
+        end
+        recipe
     end
     captures=map(1:fieldcount(typeof(callback))) do i
         value=getfield(callback, i)
