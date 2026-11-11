@@ -60,6 +60,8 @@ in their domains. Set `starts` to supply other starting values. Fixed keywords r
 family: `NormalFamily(location=125.0)` fits the scale of a Normal with mean 125.
 `NormalFamily(scale=1.0)` instead fits its location. Supplying both fixes the law.
 `LogNormalFamily` uses the same keywords for log location and log standard deviation.
+The [family catalogue](@ref family-catalogue) lists the available families, supports,
+parameter conventions, and starting coordinates.
 
 For arrays, `IIDFamily(LogNormalFamily(), 2)` fits one law shared by two independent entries.
 Separate candidates for `@vn(B[1])` and `@vn(B[2])` fit their parameters separately.
@@ -182,49 +184,6 @@ method. The error identifies that component's path.
 
 The [FlatPPL example](@ref flatppl-tutorial) exports an elicited joint prior and uses it
 in a complete observation model, with a density check against Julia.
-
-## Choosing additional families
-
-The family constructors below use the same fitting and validation methods as Normal and
-LogNormal families. Fixed keyword values remove parameters from optimization.
-
-| Quantity                        | Families                                            |
-|:------------------------------- |:--------------------------------------------------- |
-| Positive rates or lifetimes     | `GammaFamily`, `WeibullFamily`, `ExponentialFamily` |
-| Real-valued effects             | `StudentTFamily`, `CauchyFamily`, `LaplaceFamily`   |
-| Positive scale parameters       | `HalfNormalFamily`, `HalfStudentTFamily`            |
-| Probability vectors             | `DirichletFamily`                                   |
-| Correlated heavy-tailed effects | `MvStudentTFamily`                                  |
-
-```@example inputs
-additional_families = (
-    GammaFamily(shape=2.0),
-    StudentTFamily(df=4.0, location=0.0),
-    HalfStudentTFamily(df=3.0),
-    DirichletFamily(3; mean=[0.2, 0.3, 0.5]),
-    MvStudentTFamily(2; df=4.0),
-)
-nothing # hide
-```
-
-Gamma uses shape and scale, with mean `shape * scale`. Exponential uses its mean scale.
-Student-t uses location, scale, and degrees of freedom `df`. Its scale differs from its
-standard deviation. The multivariate form fits a scatter matrix whose covariance, when
-`df > 2`, is `df / (df - 2)` times that scatter matrix.
-
-Student-t means require `df > 1`, and variances require `df > 2`. Cauchy has neither moment.
-Use quantiles and event probabilities to elicit these heavy-tailed priors.
-
-`DirichletFamily(n)` fits the concentration vector. Fixing `mean` fits only the total
-concentration. Fixing `concentration` fits the mean on the simplex. Supplying both defines
-a fixed law. Indexed component beliefs have analytic Beta marginals. Vector subsets retain
-their original component values and dependence.
-
-Free positive parameters use log coordinates in `starts`, such as `log_shape`, `log_scale`,
-and `log_df`. A free location uses `location`. Family descriptors retain these parameter
-conventions when a session is saved. FlatPPL export converts Gamma and Exponential scales
-to the rates used by FlatPPL. Multivariate Student-t export requires a corresponding
-FlatPPL distribution primitive.
 
 ## Eliciting observations
 
