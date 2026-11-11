@@ -12,9 +12,11 @@ function Credence._compound_base(family::Credence.R2D2Family, parameters)
 end
 
 function Credence._compound_linear(family::Credence.R2D2Family, parameters, draw)
-    budget = draw.r2 / (one(draw.r2)-draw.r2)
-    scales =
-        family.noise_scale .* sqrt.(draw.allocation .* (budget/2)) ./
-        family.predictor_scales
+    # The scale can be representable when the variance budget product is not.
+    log_budget = (log(draw.r2) - log1p(-draw.r2) - log(2one(draw.r2))) / 2
+    scales = exp.(
+        log(family.noise_scale) .+ log_budget .+ log.(draw.allocation) ./ 2 .-
+        log.(family.predictor_scales),
+    )
     Diagonal(scales)
 end

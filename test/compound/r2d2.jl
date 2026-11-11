@@ -66,3 +66,30 @@ end
     @test logdensityof(prior, point) ≈ expected
     @test only(report.results).parameters == family.starts
 end
+
+@testset "R2D2 retains representable scales across numeric ranges" begin
+    for (noise, r2, allocation, coefficients) in (
+        (1.0, 1e-200, [1e-200, 1.0], [1e-200, 1e-100]),
+        (1.0, 1e-160, [1e-160, 1.0], [1e-160, 1e-80]),
+        (1.0, nextfloat(0.0), [0.5, 0.5], zeros(2)),
+        (1e308, prevfloat(1.0), [0.5, 0.5], [1.0, 2.0]),
+    )
+        family = R2D2Family(
+            2;
+            noise_scale=noise,
+            predictor_scales=fill(noise, 2),
+            mean_r2=0.5,
+            precision_r2=2.0,
+            concentration=1.0,
+        )
+        prior = only(
+            fit(Xoshiro(1304), Elicitation((), (:theta => (:r2d2 => family,),))).results,
+        ).measure
+        point = (; coefficients, r2, allocation)
+        expected = setprecision(BigFloat, 256) do
+            scale = sqrt.(BigFloat.(allocation) .* BigFloat(r2) ./ (2 * (1 - BigFloat(r2))))
+            sum(logpdf.(Laplace.(BigFloat(0), scale), BigFloat.(coefficients)))
+        end
+        @test logdensityof(prior, point) ≈ Float64(expected) rtol=1e-12 atol=0
+    end
+end

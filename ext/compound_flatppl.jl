@@ -52,7 +52,7 @@ function Credence._flatppl_coefficients(f::Credence.R2D2Family, p, r, path)
     noise = Credence._flatppl_value(f.noise_scale, path)
     scales = map(1:f.dimension) do i
         predictor = Credence._flatppl_value(f.predictor_scales[i], path)
-        "$noise * sqrt($r.allocation[$i] * $r.r2 / (2.0 * (1.0 - $r.r2))) / $predictor"
+        "exp(log($noise) + (log($r.allocation[$i]) + log($r.r2) - log1p(-$r.r2) - log(2.0)) / 2.0 - log($predictor))"
     end
     _conditional_product("Laplace", scales)
 end
