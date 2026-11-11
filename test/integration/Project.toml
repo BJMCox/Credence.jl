@@ -31,6 +31,7 @@ WrenDists = {url = "https://github.com/JuliaBayes/Wren.jl", subdir = "WrenDists"
 [compat]
 Enzyme = "0.13.218"
 ForwardDiff = "1.4.7"
+LogDensityProblems = "2.2.1"
 Optimization = "5.9.1"
 OptimizationOptimJL = "0.4.23"
 Test = "1"
