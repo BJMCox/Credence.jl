@@ -10,16 +10,16 @@ with parameter references and beliefs.
 The table suggests candidate families to compare. Elicited beliefs determine their
 parameters, while the scientific model determines support and any physical bounds.
 
-| Example parameter                             | Recommended candidate families                                          | Choice to examine                            |
-|:--------------------------------------------- |:----------------------------------------------------------------------- |:-------------------------------------------- |
-| Event rate or positive intensity              | `GammaFamily`, `LogNormalFamily`                                        | Mass near zero and the upper tail            |
-| Probability, efficiency, or proportion        | `ScaledBetaFamily(0.0, 1.0)`                                            | Concentration near either boundary           |
-| Time to an event or a characteristic lifetime | `GammaFamily`, `WeibullFamily`, `LogNormalFamily`                       | Skewness and plausible long times            |
-| Noise standard deviation or group-level scale | `HalfNormalFamily`, `HalfStudentTFamily`                                | Allowance for large scales                   |
-| Signed effect, offset, or location            | `NormalFamily`, `StudentTFamily`                                        | Allowance for large deviations               |
-| Location or amplitude with physical bounds    | `ScaledBetaFamily(lower, upper)`, `TruncatedFamily(base, lower, upper)` | Shape within the known bounds                |
-| Mixture fractions summing to one              | `DirichletFamily`                                                       | Mean fractions and their joint concentration |
-| Correlated signed effects                     | `MvNormalFamily`, `MvStudentTFamily`                                    | Dependence and joint tail behaviour          |
+| Example parameter                             | Recommended candidate families                                                                                           | Choice to examine                            |
+|:--------------------------------------------- |:------------------------------------------------------------------------------------------------------------------------ |:-------------------------------------------- |
+| Event rate or positive intensity              | [`GammaFamily`](@ref), [`LogNormalFamily`](@ref)                                                                         | Mass near zero and the upper tail            |
+| Probability, efficiency, or proportion        | [`ScaledBetaFamily(0.0, 1.0)`](@ref ScaledBetaFamily)                                                                    | Concentration near either boundary           |
+| Time to an event or a characteristic lifetime | [`GammaFamily`](@ref), [`WeibullFamily`](@ref), [`LogNormalFamily`](@ref)                                                | Skewness and plausible long times            |
+| Noise standard deviation or group-level scale | [`HalfNormalFamily`](@ref), [`HalfStudentTFamily`](@ref)                                                                 | Allowance for large scales                   |
+| Signed effect, offset, or location            | [`NormalFamily`](@ref), [`StudentTFamily`](@ref)                                                                         | Allowance for large deviations               |
+| Location or amplitude with physical bounds    | [`ScaledBetaFamily(lower, upper)`](@ref ScaledBetaFamily), [`TruncatedFamily(base, lower, upper)`](@ref TruncatedFamily) | Shape within the known bounds                |
+| Mixture fractions summing to one              | [`DirichletFamily`](@ref)                                                                                                | Mean fractions and their joint concentration |
+| Correlated signed effects                     | [`MvNormalFamily`](@ref), [`MvStudentTFamily`](@ref)                                                                     | Dependence and joint tail behaviour          |
 
 Set scales in the parameter's physical units and compare the implied prior predictions.
 Student-t families provide heavier tails than their Normal counterparts. Physical bounds
