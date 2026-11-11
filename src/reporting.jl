@@ -28,7 +28,7 @@ approximate-target discrepancy, and errors. Set `result_id` to restrict the rows
 """
 function belief_summary(validation::Validation; result_id=nothing)
     report = validation.report
-    [
+    NamedTuple[
         _belief_row(result.id, belief, check) for
         (result, checks) in zip(report.results, validation.checks) if
         result_id === nothing || result.id == result_id for
