@@ -29,26 +29,26 @@ struct CompoundInverse{T}
 end
 inverse(transform::CompoundTransform) = CompoundInverse(transform)
 inverse(transform::CompoundInverse) = transform.transform
-function (transform::CompoundTransform)(point)
+function _compound_point_and_factor(transform::CompoundTransform, point)
     factor = _compound_linear(transform.family, transform.parameters, point)
     coefficients = reshape(factor * point.z, _compound_shape(transform.family))
-    (; coefficients, Base.structdiff(point, (z=nothing,))...)
+    ((; coefficients, Base.structdiff(point, (z=nothing,))...), factor)
 end
-function (transform::CompoundInverse)(point)
+function _compound_point_and_factor(transform::CompoundInverse, point)
     forward = transform.transform
     auxiliary = Base.structdiff(point, (coefficients=nothing,))
     factor =
         _compound_linear(forward.family, forward.parameters, (; z=nothing, auxiliary...))
-    (; z=factor \ vec(point.coefficients), auxiliary...)
+    ((; z=factor \ vec(point.coefficients), auxiliary...), factor)
 end
+(transform::Union{CompoundTransform,CompoundInverse})(point) =
+    first(_compound_point_and_factor(transform, point))
 function with_logabsdet_jacobian(transform::CompoundTransform, point)
-    factor = _compound_linear(transform.family, transform.parameters, point)
-    (transform(point), first(logabsdet(factor)))
+    value, factor = _compound_point_and_factor(transform, point)
+    (value, first(logabsdet(factor)))
 end
 function with_logabsdet_jacobian(transform::CompoundInverse, point)
-    base = transform(point)
-    forward = transform.transform
-    factor = _compound_linear(forward.family, forward.parameters, base)
+    base, factor = _compound_point_and_factor(transform, point)
     (base, -first(logabsdet(factor)))
 end
 
