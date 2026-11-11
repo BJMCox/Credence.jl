@@ -119,3 +119,33 @@ end
     @test report.results[1].error === nothing
     @test report.results[2].error isa ArgumentError
 end
+
+@testset "Reference selections keep validation ownership" begin
+    beliefs = (Hard(:mean, Mean(), Between(-0.1, 0.1)),)
+    first_report = fit(
+        Xoshiro(120),
+        Elicitation(
+            beliefs,
+            (Candidate(:normal, _ -> asmeasure(Normal(10.0, 1.0)), [0.0]),),
+        ),
+    )
+    other_report = fit(
+        Xoshiro(121),
+        Elicitation(beliefs, (Candidate(:normal, _ -> StdNormal(), [0.0]),)),
+    )
+    validation = validate(Xoshiro(122), other_report)
+    @test_throws ArgumentError select(
+        first_report,
+        (:normal, 1);
+        role=:reference,
+        validation,
+        rationale="Unrelated checks",
+    )
+    reference = select(
+        first_report,
+        (:normal, 1);
+        role=:reference,
+        rationale="Retained for discussion",
+    )
+    @test mean(measure(reference)) == 10.0
+end

@@ -16,6 +16,7 @@ using VarNames: VarNames, VarName, getvalue, getsym, getoptic, subsumes
 import StatsAPI: fit
 import Base: unlock
 using Statistics: mean, std, cov, cor, var, quantile
+import TOML, SHA
 
 export Probability, Quantile, Mean, Std, Statistic, Estimate, evaluate
 export Hard, Approximate, AtLeast, AtMost, Between, EqualTo
@@ -26,6 +27,10 @@ export NormalFamily, LogNormalFamily, ScaledBetaFamily, TruncatedFamily, IIDFami
 export MvNormalFamily, MvLogNormalFamily, Independent, AllCombinations, unlock
 export diagnostics, flatppl
 export fit_summary, belief_summary
+export GammaFamily, WeibullFamily, ExponentialFamily, StudentTFamily, CauchyFamily
+export LaplaceFamily,
+    HalfNormalFamily, HalfStudentTFamily, DirichletFamily, MvStudentTFamily
+export Predictive, save_session, load_session
 
 include("statistics.jl")
 include("beliefs.jl")
@@ -38,5 +43,6 @@ include("evaluation.jl")
 include("validation.jl")
 include("reporting.jl")
 include("flatppl.jl")
+include("persistence.jl")
 
 end

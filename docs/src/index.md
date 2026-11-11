@@ -90,5 +90,5 @@ contains the constructor and method documentation.
 
 ## Development status
 
-Credence is a prototype. Planned work includes predictive fitting, formula syntax, tilting,
-propagation of judgment uncertainty, portable persistence, and interactive controls.
+Credence is a prototype. Planned work includes formula syntax, tilting,
+propagation of judgment uncertainty, and interactive controls.

@@ -58,6 +58,8 @@ problem[:S, :median].target
 Family descriptors supply starting parameters and the transforms needed to keep parameters
 in their domains. Set `starts` to supply other starting values. Fixed keywords restrict the
 family: `NormalFamily(location=125.0)` fits the scale of a Normal with mean 125.
+`NormalFamily(scale=1.0)` instead fits its location. Supplying both fixes the law.
+`LogNormalFamily` uses the same keywords for log location and log standard deviation.
 
 For arrays, `IIDFamily(LogNormalFamily(), 2)` fits one law shared by two independent entries.
 Separate candidates for `@vn(B[1])` and `@vn(B[2])` fit their parameters separately.
@@ -180,3 +182,172 @@ method. The error identifies that component's path.
 
 The [FlatPPL example](@ref flatppl-tutorial) exports an elicited joint prior and uses it
 in a complete observation model, with a density check against Julia.
+
+## Choosing additional families
+
+The family constructors below use the same fitting and validation methods as Normal and
+LogNormal families. Fixed keyword values remove parameters from optimization.
+
+| Quantity                        | Families                                            |
+|:------------------------------- |:--------------------------------------------------- |
+| Positive rates or lifetimes     | `GammaFamily`, `WeibullFamily`, `ExponentialFamily` |
+| Real-valued effects             | `StudentTFamily`, `CauchyFamily`, `LaplaceFamily`   |
+| Positive scale parameters       | `HalfNormalFamily`, `HalfStudentTFamily`            |
+| Probability vectors             | `DirichletFamily`                                   |
+| Correlated heavy-tailed effects | `MvStudentTFamily`                                  |
+
+```@example inputs
+additional_families = (
+    GammaFamily(shape=2.0),
+    StudentTFamily(df=4.0, location=0.0),
+    HalfStudentTFamily(df=3.0),
+    DirichletFamily(3; mean=[0.2, 0.3, 0.5]),
+    MvStudentTFamily(2; df=4.0),
+)
+nothing # hide
+```
+
+Gamma uses shape and scale, with mean `shape * scale`. Exponential uses its mean scale.
+Student-t uses location, scale, and degrees of freedom `df`. Its scale differs from its
+standard deviation. The multivariate form fits a scatter matrix whose covariance, when
+`df > 2`, is `df / (df - 2)` times that scatter matrix.
+
+Student-t means require `df > 1`, and variances require `df > 2`. Cauchy has neither moment.
+Use quantiles and event probabilities to elicit these heavy-tailed priors.
+
+`DirichletFamily(n)` fits the concentration vector. Fixing `mean` fits only the total
+concentration. Fixing `concentration` fits the mean on the simplex. Supplying both defines
+a fixed law. Indexed component beliefs have analytic Beta marginals. Vector subsets retain
+their original component values and dependence.
+
+Free positive parameters use log coordinates in `starts`, such as `log_shape`, `log_scale`,
+and `log_df`. A free location uses `location`. Family descriptors retain these parameter
+conventions when a session is saved. FlatPPL export converts Gamma and Exponential scales
+to the rates used by FlatPPL. Multivariate Student-t export requires a corresponding
+FlatPPL distribution primitive.
+
+## Eliciting observations
+
+`Predictive` attaches beliefs to observations generated from uncertain parameters.
+Its kernel defines a conditional observation measure. Fitting changes the prior family
+parameters while retaining that observation model.
+
+```@example predictive
+using Credence, MeasureBase, Optimization, OptimizationOptimJL, Random
+using Distributions: Normal
+
+reading = Predictive(:reading, :offset, offset -> asmeasure(Normal(offset, 0.25)))
+problem = Elicitation(
+    (reading => (Approximate(:mean, Mean(), 2.0; scale=0.2),),),
+    (:offset => (:laplace => LaplaceFamily(scale=0.5),),),
+)
+report = fit(Xoshiro(91), problem, NelderMead(); sampling=MonteCarlo(1024), maxiters=300)
+validation = validate(Xoshiro(92), report; sampling=MonteCarlo(4096))
+belief_summary(validation)
+```
+
+Each independent prior draw produces one observation. Beliefs about the same predictive
+target share that observation batch. Fitting uses fixed random inputs to compare parameter
+settings. Validation draws a new batch. `MonteCarlo(n)` counts joint parameter/observation draws.
+
+For an existing simulator, use the explicit RNG form:
+
+```@example predictive
+simulated_reading = Predictive(
+    :simulated_reading,
+    :offset;
+    simulator=(rng, offset) -> offset + 0.25randn(rng),
+)
+nothing # hide
+```
+
+The simulator can return a scalar or an array. Event predicates can inspect structured
+outcomes. Simulation errors retain the predictive target name and the parameter values
+that caused the failure. The [Wren example](@ref wren-tutorial) uses a Wren observation
+model through this simulator interface.
+
+## Saving and resuming an elicitation
+
+`save_session` writes a versioned TOML record of a problem, fitted parameters, validation,
+selections, and revision history. `load_session` restores those objects and rebuilds the
+selected measures from their saved parameters.
+
+```@example sessions
+using Credence, MeasureBase, Optimization, OptimizationOptimJL, Random
+using Distributions: mean
+
+initial = Elicitation(
+    (:rate => (Approximate(:mean, Mean(), 6.0; scale=1.0),),),
+    (:rate => (:gamma => GammaFamily(shape=2.0),),),
+)
+initial_report = fit(Xoshiro(101), initial, NelderMead(); maxiters=1000)
+initial_validation = validate(Xoshiro(102), initial_report)
+revised = replace(initial, :rate => Approximate(:mean, Mean(), 7.5; scale=1.0))
+report = fit(Xoshiro(103), revised, NelderMead(); maxiters=1000)
+validation = validate(Xoshiro(104), report)
+selection = select(
+    report,
+    :rate,
+    (:gamma, 1);
+    validation,
+    rationale="The revised mean reflects the calibration review.",
+)
+
+mkpath("elicitation-output")
+path = "elicitation-output/rate-session.toml"
+save_session(
+    path,
+    revised;
+    report,
+    validation,
+    selections=(selection,),
+    history=((
+        problem=initial,
+        report=initial_report,
+        validation=initial_validation,
+        selections=(),
+        rationale="Initial calibration judgment.",
+    ),),
+    metadata=(rate_unit="events/hour",),
+)
+restored = load_session(path)
+mean(measure(only(restored.selections)))
+```
+
+[Download the saved session](elicitation-output/rate-session.toml).
+The restored validation refers to the restored report, and the selected prior retains its
+rationale. Earlier fitted revisions remain available through `restored.history`.
+Optimizer provenance retains the solver type and return code as portable data.
+
+Custom functions use a named callback registry. Supply the same reconstruction recipes
+when saving and loading:
+
+```@example sessions
+using Distributions: Poisson
+
+simulate_detector(rng, rate) = rand(rng, Poisson(3rate))
+counts = Predictive(:counts, :rate; simulator=simulate_detector)
+predictive_problem = Elicitation(
+    (counts => (Approximate(:mean, Mean(), 6.0; scale=1.0),),),
+    (:rate => (:gamma => GammaFamily(shape=2.0, scale=1.0),),),
+)
+predictive_report = fit(Xoshiro(105), predictive_problem; sampling=MonteCarlo(1024))
+predictive_validation = validate(Xoshiro(106), predictive_report)
+callbacks = (detector=(callback=simulate_detector, version="1"),)
+callback_path = "elicitation-output/predictive-session.toml"
+save_session(
+    callback_path,
+    predictive_problem;
+    report=predictive_report,
+    validation=predictive_validation,
+    callbacks,
+)
+restored_predictive = load_session(callback_path; callbacks)
+belief_summary(restored_predictive.validation)
+```
+
+Callback fingerprints cover available source code and serializable captured values.
+Explicit versions identify REPL functions and opaque context. Keep those versions aligned
+with model dependencies and global data, which source fingerprints alone cannot describe.
+Loading checks the session schema, package provenance, and callback fingerprints before
+restoring validation. Changed models require a new fit and validation.

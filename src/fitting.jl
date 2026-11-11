@@ -3,7 +3,7 @@
 
 A MeasureBase family builder with explicit starts and optional parameter bounds.
 """
-struct Candidate{I,F,S,L,U,T,B}
+struct Candidate{I,F,S,L,U,T,B,D}
     id::I
     build::F
     starts::S
@@ -11,6 +11,7 @@ struct Candidate{I,F,S,L,U,T,B}
     upper::U
     scope::T
     requirements::B
+    family::D
 end
 
 function Candidate(
@@ -21,6 +22,7 @@ function Candidate(
     upper=nothing,
     scope=nothing,
     requirements=(),
+    family=nothing,
 )
     points = if starts isa NamedTuple
         (starts,)
@@ -44,7 +46,7 @@ function Candidate(
         all(lo .<= hi) || throw(ArgumentError("lower parameter bounds exceed upper bounds"))
     end
     builder = first(points) isa NamedTuple ? NamedBuilder(build, first(points)) : build
-    Candidate(id, builder, points, lo, hi, scope, requirements)
+    Candidate(id, builder, points, lo, hi, scope, requirements, family)
 end
 
 _flatten(x::Number) = [x]
@@ -103,6 +105,7 @@ _scoped(candidate, target) = Candidate(
     candidate.upper,
     target,
     candidate.requirements,
+    candidate.family,
 )
 _resultid(candidate, index) =
     candidate.scope === nothing || candidate.scope isa Tuple ? (candidate.id, index) :

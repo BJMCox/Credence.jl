@@ -72,11 +72,12 @@ _factor_names(n) = ntuple(i -> Symbol(:factor, i), n)
 
 function _factor_template(law)
     try
-        mean(law)
+        value = mean(law)
+        all(isfinite, _flatten(value)) && return value
     catch error
         error isa Union{MethodError,ArgumentError,DomainError} || rethrow()
-        MeasureBase.testvalue(law)
     end
+    MeasureBase.testvalue(law)
 end
 _coordinate_labels(x, offset) = (offset[]+=1)
 _coordinate_labels(x::Union{Tuple,NamedTuple,AbstractArray}, offset) =

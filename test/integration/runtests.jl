@@ -169,3 +169,52 @@ end
     @test model.args.buffer == before
     @test caller_buffer == zeros(2)
 end
+
+@wren function structured_prior_model(prior, observed)
+    theta ~ prior
+    @observe observed ~ Normal(theta.rate * theta.weights[1] + sum(theta.beta), 1.0)
+end
+
+@testset "New prior families retain Wren gradients" begin
+    problem = Elicitation(
+        (),
+        (
+            :rate => (:gamma => GammaFamily(shape=2.0, scale=3.0),),
+            :weights => (
+                :simplex =>
+                    DirichletFamily(3; mean=[0.2, 0.3, 0.5], concentration=10.0),
+            ),
+            :beta => (:student => MvStudentTFamily(2; df=4.0),),
+        );
+        combinations=(
+            :joint => Independent(:rate=>:gamma, :weights=>:simplex, :beta=>:student),
+        ),
+    )
+    prior = only(fit(Xoshiro(991), problem).results).measure
+    model = structured_prior_model(prior, 0.4)
+    z = [log(4.0), -0.3, 0.4, 1.0, -0.5]
+    forward = VecModel(model, AutoForwardDiff(); latent_source=FromPrior(Xoshiro(992)))
+    expected_value, expected_gradient =
+        LogDensityProblems.logdensity_and_gradient(forward, z)
+    copies = filter(!=(:prior), WrenCore._copied_args(model))
+    readonly = WrenCore._with_copied_args(model, copies)
+    enzyme = VecModel(
+        readonly,
+        AutoEnzyme(; mode=Reverse);
+        latent_source=FromPrior(Xoshiro(993)),
+        reduce_copies=false,
+    )
+    actual_value, actual_gradient = LogDensityProblems.logdensity_and_gradient(enzyme, z)
+    @test isfinite(expected_value) && all(isfinite, expected_gradient)
+    @test actual_value ≈ expected_value
+    @test actual_gradient ≈ expected_gradient
+    chain = nuts(
+        Xoshiro(994),
+        readonly,
+        16;
+        adtype=AutoEnzyme(; mode=Reverse),
+        reduce_copies=false,
+        progress=false,
+    )
+    @test size(chain) == (16, 1)
+end

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+  - Add positive, heavy-tailed, simplex, and multivariate Student-t families with fixed-parameter options.
+  - Evaluate Dirichlet and Student-t marginals and component quantiles analytically.
+  - Elicit predictive observations through conditional measures or explicit RNG simulators.
+  - Save and restore fitted sessions, revisions, selections, and callback provenance as versioned TOML.
   - Preserve sampling plans during validation and compare candidates with simultaneous uncertainty bounds.
   - Add concise report displays, summary rows, and cross-belief consistency diagnostics.
   - Accept a single named parameter record as a candidate start.

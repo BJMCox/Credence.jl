@@ -139,6 +139,7 @@ function unlock(selection::Selection)
         upper=result.candidate.upper,
         scope=result.candidate.scope,
         requirements=_requirements(selection),
+        family=result.candidate.family,
     )
 end
 
@@ -162,10 +163,14 @@ function select(report::FitReport, result_id; role=:accepted, validation=nothing
     index === nothing && throw(ArgumentError("unknown result ID"))
     result = report.results[index]
     result.error === nothing || throw(ArgumentError("cannot select a failed candidate"))
-    if role == :accepted
-        validation isa Validation || throw(ArgumentError("acceptance requires validation"))
+    if validation !== nothing
+        validation isa Validation ||
+            throw(ArgumentError("selection requires a Validation record"))
         validation.report === report ||
             throw(ArgumentError("validation belongs to another report"))
+    end
+    if role == :accepted
+        validation isa Validation || throw(ArgumentError("acceptance requires validation"))
         _acceptable(result.candidate, validation.checks[index]) || throw(
             ArgumentError("hard requirements remain violated, undefined, or inconclusive"),
         )

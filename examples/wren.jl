@@ -24,6 +24,7 @@ using Wren: @wren, @observe, nuts, AutoEnzyme, Reverse
 import WrenCore
 import Enzyme
 using Random: Xoshiro
+using VarNames: @vn
 
 # ## Define the prior
 #
@@ -89,6 +90,28 @@ model = regression(prior, 0.4)
 
 # Plaice maps the prior to the coordinates used for inference: the two coefficient values
 # and `log(sigma)`. Wren includes the transformation Jacobian when evaluating the density.
+#
+# ## Check prior predictions with Wren
+#
+# A predictive target can call a Wren model through an explicit RNG simulator.
+# Here a new observation has the same conditional law as the regression likelihood.
+# The elicited coefficient means imply prior predictive mean zero at `x = 2`.
+
+@wren function future_observation(beta, sigma)
+    outcome ~ Normal(beta[1] + 2 * beta[2], sigma)
+end
+simulate_future(rng, beta, sigma) = rand(rng, future_observation(beta, sigma))[@vn(outcome)]
+future_y = Predictive(:future_y, (:beta, :sigma); simulator=simulate_future)
+predictive_problem = Elicitation(
+    (future_y => (Approximate(:mean, Mean(), 0.0; scale=1.0),),),
+    (Candidate(:selected, _ -> prior, [0.0]),),
+)
+predictive_report = fit(Xoshiro(1005), predictive_problem; sampling=MonteCarlo(10_000))
+predictive_validation = validate(Xoshiro(1006), predictive_report)
+display(belief_summary(predictive_validation))
+
+# This check draws from the elicited prior and the Wren observation model. All beliefs
+# about `future_y` share the same simulated observations.
 #
 # ## Sample the posterior
 #

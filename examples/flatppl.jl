@@ -20,7 +20,7 @@ using Distributions: Poisson, logpdf
 # Suppose calibration knowledge gives efficiency median 0.8 and fifth percentile 0.6.
 # The event rate has median 4 events/hour and 95th percentile 9 events/hour.
 # Scales set the units of fitting discrepancies. We assume a Beta efficiency prior,
-# a LogNormal rate prior, and independence between the two parameters.
+# a Gamma rate prior, and independence between the two parameters.
 
 beliefs = (
     :efficiency => (
@@ -34,12 +34,12 @@ beliefs = (
 )
 candidates = (
     :efficiency => (:beta => ScaledBetaFamily(0.0, 1.0),),
-    :rate => (:lognormal => LogNormalFamily(),),
+    :rate => (:gamma => GammaFamily(),),
 )
 problem = Elicitation(
     beliefs,
     candidates;
-    combinations=(:calibration => Independent(:efficiency => :beta, :rate => :lognormal),),
+    combinations=(:calibration => Independent(:efficiency => :beta, :rate => :gamma),),
 )
 report = fit(Xoshiro(72), problem, NelderMead(); maxiters=10000, g_tol=1e-12)
 validation = validate(Xoshiro(73), report)
@@ -52,7 +52,7 @@ selection = select(
     report,
     selected_id;
     validation,
-    rationale="The fitted quantiles represent the calibration judgments under independent Beta and LogNormal priors.",
+    rationale="The fitted quantiles represent the calibration judgments under independent Beta and Gamma priors.",
 )
 prior = measure(selection)
 nothing # hide
