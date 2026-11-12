@@ -14,7 +14,7 @@ VarNames = "09a315b2-63fc-4165-8d7f-d59368e770cc"
 [sources]
 Credence = {path = ".."}
 HeterogeneousComputing = {rev = "18f24c9b7b7ad92e89cabb96cddfd4ef12d4565d", url = "https://github.com/oschulz/HeterogeneousComputing.jl"}
-MeasureBase = {rev = "ad53c244f905d57c8f35c15fe1da0ef163023096", url = "https://github.com/JuliaMath/MeasureBase.jl"}
+MeasureBase = {rev = "52c73ee2e78cfbfd918ca136f0c820894aad5015", url = "https://github.com/JuliaMath/MeasureBase.jl"}
 
 [compat]
 CairoMakie = "0.15"
