@@ -39,8 +39,10 @@ appropriate redistribution of importance to preserve the objective.
 
 Hard beliefs become optimization constraints. Use a solver that supports those constraints,
 such as `IPNewton()` from OptimizationOptimJL. Credence defaults to `Optimization.NoAD()`.
-Supply an AD type when the chosen solver requires derivatives. Configure the RNG for a
-stochastic solver through that solver's options.
+Supply an AD type when the chosen solver requires derivatives. For smooth objectives,
+load ForwardDiff and use `BFGS()` with `adtype=Optimization.AutoForwardDiff()`.
+Sampled event probabilities can produce discontinuous objectives, which suit a
+derivative-free solver. Configure the RNG for a stochastic solver through its options.
 
 `Evaluate()` evaluates the supplied starts. An optimization algorithm instead retains a
 solution from each start. Subsequent comparisons concern this finite set of results.

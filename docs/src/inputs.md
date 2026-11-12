@@ -194,13 +194,21 @@ parameters while retaining that observation model.
 ```@example predictive
 using Credence, MeasureBase, Optimization, OptimizationOptimJL, Random
 using Distributions: Normal
+import ForwardDiff
 
 reading = Predictive(:reading, :offset, offset -> asmeasure(Normal(offset, 0.25)))
 problem = Elicitation(
     (reading => (Approximate(:mean, Mean(), 2.0; scale=0.2),),),
     (:offset => (:laplace => LaplaceFamily(scale=0.5),),),
 )
-report = fit(Xoshiro(91), problem, NelderMead(); sampling=MonteCarlo(1024), maxiters=300)
+report = fit(
+    Xoshiro(91),
+    problem,
+    BFGS();
+    adtype=Optimization.AutoForwardDiff(),
+    sampling=MonteCarlo(1024),
+    maxiters=300,
+)
 validation = validate(Xoshiro(92), report; sampling=MonteCarlo(4096))
 belief_summary(validation)
 ```
@@ -234,15 +242,18 @@ selected measures from their saved parameters.
 ```@example sessions
 using Credence, MeasureBase, Optimization, OptimizationOptimJL, Random
 using Distributions: mean
+import ForwardDiff
 
 initial = Elicitation(
     (:rate => (Approximate(:mean, Mean(), 6.0; scale=1.0),),),
     (:rate => (:gamma => GammaFamily(shape=2.0),),),
 )
-initial_report = fit(Xoshiro(101), initial, NelderMead(); maxiters=1000)
+initial_report =
+    fit(Xoshiro(101), initial, BFGS(); adtype=Optimization.AutoForwardDiff(), maxiters=1000)
 initial_validation = validate(Xoshiro(102), initial_report)
 revised = replace(initial, :rate => Approximate(:mean, Mean(), 7.5; scale=1.0))
-report = fit(Xoshiro(103), revised, NelderMead(); maxiters=1000)
+report =
+    fit(Xoshiro(103), revised, BFGS(); adtype=Optimization.AutoForwardDiff(), maxiters=1000)
 validation = validate(Xoshiro(104), report)
 selection = select(
     report,

@@ -7,6 +7,7 @@ authors = ["Jessica Cox <bcox@mpp.mpg.de> and contributors"]
 [deps]
 ChangesOfVariables = "9e997f8a-9a97-42d5-a9f1-ce6bfc15e2c0"
 InverseFunctions = "3587e190-3f89-42d0-90ee-14403ec27112"
+IntervalSets = "8197267c-284f-5f27-9208-e0e47529a953"
 HeterogeneousComputing = "2182be2a-124f-4a91-8389-f06db5907a21"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MeasureBase = "fa1605e6-acd5-459c-a1e6-7e635759db14"
@@ -28,12 +29,13 @@ CredenceOptimizationExt = "Optimization"
 CredencePlaiceExt = ["Plaice", "VarNames"]
 
 [sources]
-MeasureBase = {url = "https://github.com/JuliaMath/MeasureBase.jl", rev = "ad53c244f905d57c8f35c15fe1da0ef163023096"}
+MeasureBase = {url = "https://github.com/JuliaMath/MeasureBase.jl", rev = "52c73ee2e78cfbfd918ca136f0c820894aad5015"}
 HeterogeneousComputing = {url = "https://github.com/oschulz/HeterogeneousComputing.jl", rev = "18f24c9b7b7ad92e89cabb96cddfd4ef12d4565d"}
 
 [compat]
 ChangesOfVariables = "0.1"
 InverseFunctions = "0.1"
+IntervalSets = "0.7"
 Distributions = "0.25"
 ForwardDiff = "1"
 HeterogeneousComputing = "0.3"

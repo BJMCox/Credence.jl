@@ -1,12 +1,15 @@
+using IntervalSets: ClosedInterval
+
 module FlatPPLExpressions
-using Distributions: Normal, LogNormal, Beta, MvNormal, LocationScale, truncated
-using MeasureBase: asmeasure, productmeasure
+using Distributions: Normal, LogNormal, Beta, MvNormal, LocationScale, truncated, cdf
+using MeasureBase: MeasureBase, asmeasure, productmeasure
 joint(; laws...) = productmeasure(map(asmeasure, (; laws...)))
 joint(laws...) = productmeasure(map(asmeasure, laws))
 locscale(law, location, scale) = LocationScale(location, scale, law)
 interval(lower, upper) = (lower, upper)
-truncate(law, bounds) = truncated(law, bounds...)
-normalize(law) = law
+truncate(law, bounds) =
+    (cdf(law, last(bounds))-cdf(law, first(bounds))) * asmeasure(truncated(law, bounds...))
+normalize(law) = inv(MeasureBase.massof(law)) * law
 rowstack(rows) = reduce(vcat, permutedims.(rows))
 iid(law, n::Integer) = asmeasure(law)^n
 iid(law, dims::AbstractVector) = asmeasure(law)^Tuple(dims)
@@ -36,6 +39,15 @@ end
     point = [0.2 -0.4 0.3; 1.0 0.5 -0.2]
     @test logdensityof(FlatPPLExpressions.evaluate(flatppl(matrix_prior)), point) ≈
           logdensityof(matrix_prior, point)
+
+    bounded = truncate(asmeasure(Normal(0.0, 2.0)), ClosedInterval(-3.0, 3.0))
+    for (law, expected_mass) in
+        ((bounded, massof(bounded)), (MeasureBase.normalize(bounded), 1.0))
+        exported = FlatPPLExpressions.evaluate(flatppl(law))
+        @test massof(exported) ≈ expected_mass
+        @test logdensityof(exported, 1.0) ≈ logdensityof(law, 1.0)
+        @test logdensityof(exported, 4.0) == logdensityof(law, 4.0) == -Inf
+    end
 
     belief = Hard(:median, Quantile(0.5), Between(-0.1, 0.1))
     candidate = Candidate(:normal, _ -> StdNormal(), [0.0])

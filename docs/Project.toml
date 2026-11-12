@@ -4,6 +4,7 @@ Credence = "178d0c97-14ee-4441-973b-23c323c9f53d"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 DocumenterCodeBlocks = "b6400b83-267f-4b55-9fd8-bffc853bdfd8"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 HeterogeneousComputing = "2182be2a-124f-4a91-8389-f06db5907a21"
 Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
 MeasureBase = "fa1605e6-acd5-459c-a1e6-7e635759db14"
@@ -15,13 +16,14 @@ VarNames = "09a315b2-63fc-4165-8d7f-d59368e770cc"
 [sources]
 Credence = {path = ".."}
 HeterogeneousComputing = {rev = "18f24c9b7b7ad92e89cabb96cddfd4ef12d4565d", url = "https://github.com/oschulz/HeterogeneousComputing.jl"}
-MeasureBase = {rev = "ad53c244f905d57c8f35c15fe1da0ef163023096", url = "https://github.com/JuliaMath/MeasureBase.jl"}
+MeasureBase = {rev = "52c73ee2e78cfbfd918ca136f0c820894aad5015", url = "https://github.com/JuliaMath/MeasureBase.jl"}
 
 [compat]
 CairoMakie = "0.15"
 Distributions = "0.25"
 Documenter = "1.18"
 DocumenterCodeBlocks = "1.5"
+ForwardDiff = "1"
 HeterogeneousComputing = "0.3"
 Literate = "2"
 MeasureBase = "0.15"

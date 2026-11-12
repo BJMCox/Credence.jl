@@ -21,6 +21,17 @@ _flatppl(::MeasureBase.StdUniform, path) = "Uniform(interval(0.0, 1.0))"
 _flatppl(::MeasureBase.StdExponential, path) = "Exponential(1.0)"
 _flatppl(prior::MeasureBase.Dirac, path) =
     "Dirac(" * _flatppl_value(MeasureBase.atomof(prior), path) * ")"
+_flatppl(prior::MeasureBase.NormalizedMeasure, path) =
+    "normalize(" * _flatppl(MeasureBase.basemeasure(prior), path) * ")"
+function _flatppl(prior::MeasureBase.TruncatedMeasure, path)
+    "truncate(" *
+    _flatppl(prior.parent, path) *
+    ", interval(" *
+    _flatppl_value(prior.lo, path) *
+    ", " *
+    _flatppl_value(prior.hi, path) *
+    "))"
+end
 
 function _flatppl_value(x::Union{Float16,Float32,Float64}, path)
     isnan(x) && throw(ArgumentError("NaN at $path has no FlatPPL prior translation"))

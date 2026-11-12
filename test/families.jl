@@ -36,8 +36,22 @@
     @test logdensityof(only(report.results).measure, 1.0) ≈ logpdf(LogNormal(0.3, 0.7), 1.0)
     bounded = TruncatedFamily(NormalFamily(scale=2.0), -3.0, 3.0)
     report = fit(Xoshiro(817), Elicitation((), (:x => (:bounded => bounded,),)))
-    @test logdensityof(only(report.results).measure, 1.0) ≈
-          logpdf(truncated(Normal(0.0, 2.0), -3.0, 3.0), 1.0)
+    prior = only(report.results).measure
+    expected = truncated(Normal(0.0, 2.0), -3.0, 3.0)
+    @test logdensityof(prior, 1.0) ≈ logpdf(expected, 1.0)
+    @test logdensityof(prior, 4.0) == -Inf
+    @test massof(prior) == 1
+    @test evaluate(Probability(-3.0, 3.0), prior).value ≈ 1
+    @test evaluate(Mean(), prior).value ≈ mean(expected)
+    @test evaluate(Std(), prior).value ≈ std(expected)
+
+    function truncated_median(location)
+        family = TruncatedFamily(LogNormalFamily(; location, scale=0.5), 0.0, Inf)
+        report = fit(Xoshiro(818), Elicitation((), (:x => (:law => family,),)))
+        evaluate(Quantile(0.5), only(report.results).measure).value
+    end
+    @test truncated_median(0.0) ≈ 1
+    @test ForwardDiff.derivative(truncated_median, 0.0) ≈ 1
 
     cases = (
         (Credence.WeibullFamily(shape=2.0, scale=3.0), Weibull(2.0, 3.0)),

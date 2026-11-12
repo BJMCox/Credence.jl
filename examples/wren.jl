@@ -20,6 +20,7 @@ using Distributions: Normal, MvNormal, LogNormal
 using Plaice
 using PDMats
 using Optimization, OptimizationOptimJL
+import ForwardDiff
 using Wren: @wren, @observe, nuts, AutoEnzyme, Reverse
 import WrenCore
 import Enzyme
@@ -56,7 +57,14 @@ beliefs = (
     :sigma => (Approximate(:median, Quantile(0.5), exp(-0.3); scale=1.0),),
 )
 problem = Elicitation(beliefs, [candidate])
-report = fit(Xoshiro(1001), problem, NelderMead(); maxiters=3000, g_tol=1e-14)
+report = fit(
+    Xoshiro(1001),
+    problem,
+    BFGS();
+    adtype=Optimization.AutoForwardDiff(),
+    maxiters=3000,
+    g_tol=1e-14,
+)
 validation = validate(Xoshiro(1002), report)
 display(belief_summary(validation))
 
