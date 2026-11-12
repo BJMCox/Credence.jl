@@ -1,4 +1,4 @@
-digest = "3e75789a0890a6a713d58fd894338c4752a66b48e38fbb22738742d67e6604d2"
+digest = "28981d0814d80f32b83a4f38f26e43481f5c93f0efb93231dd756c8eb2c2170a"
 format = "Credence session"
 selections = []
 version = 1
@@ -8,7 +8,7 @@ Credence = "0.0.1"
 Distributions = "0.25.134"
 MeasureBase = "0.15.0"
 julia = "1.13.3"
-source_fingerprint = "fa7389d8881cee99c63ecb74d57bdf4ec13ceaf25cea8da7e5a58416e2f9fc61"
+source_fingerprint = "1daad72b02ae302d28b2f6d8d0f4ee087216f0c25db0367096308edde4571de1"
 
 [history]
 tag = "tuple"

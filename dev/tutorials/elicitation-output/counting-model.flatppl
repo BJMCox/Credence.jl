@@ -1,8 +1,8 @@
 flatppl_compat = "0.1"
 
 prior = joint(
-    efficiency = locscale(Beta(11.969958134107028, 3.235605795949116), 0.0, 1.0),
-    rate = Gamma(3.3654921580919, 0.7596678187868671)
+    efficiency = locscale(Beta(11.969959193697484, 3.235606091365291), 0.0, 1.0),
+    rate = Gamma(3.3654908143469404, 0.7596675974525409)
 )
 
 exposure = 3.0
