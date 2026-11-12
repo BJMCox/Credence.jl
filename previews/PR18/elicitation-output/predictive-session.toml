@@ -1,0 +1,219 @@
+digest = "28981d0814d80f32b83a4f38f26e43481f5c93f0efb93231dd756c8eb2c2170a"
+format = "Credence session"
+selections = []
+version = 1
+
+[environment]
+Credence = "0.0.1"
+Distributions = "0.25.134"
+MeasureBase = "0.15.0"
+julia = "1.13.3"
+source_fingerprint = "1daad72b02ae302d28b2f6d8d0f4ee087216f0c25db0367096308edde4571de1"
+
+[history]
+tag = "tuple"
+values = []
+
+[metadata]
+names = []
+tag = "record"
+values = []
+
+[problem]
+tag = "problem"
+
+    [problem.beliefs]
+    tag = "tuple"
+
+        [[problem.beliefs.values]]
+        tag = "approximate"
+
+            [problem.beliefs.values.id]
+            tag = "tuple"
+
+                [[problem.beliefs.values.id.values]]
+                tag = "tuple"
+
+                    [[problem.beliefs.values.id.values.values]]
+                    tag = "symbol"
+                    value = "predictive"
+                    [[problem.beliefs.values.id.values.values]]
+                    tag = "symbol"
+                    value = "counts"
+                [[problem.beliefs.values.id.values]]
+                tag = "symbol"
+                value = "mean"
+
+            [problem.beliefs.values.importance]
+            tag = "number"
+            type = "Int64"
+            value = "1"
+
+            [problem.beliefs.values.scale]
+            tag = "number"
+            type = "Float64"
+            value = "1.0"
+
+            [problem.beliefs.values.statistic]
+            name = "On"
+            tag = "object"
+
+                [[problem.beliefs.values.statistic.fields]]
+                name = "Predictive"
+                tag = "object"
+
+                    [[problem.beliefs.values.statistic.fields.fields]]
+                    tag = "symbol"
+                    value = "counts"
+                    [[problem.beliefs.values.statistic.fields.fields]]
+                    tag = "tuple"
+
+                        [[problem.beliefs.values.statistic.fields.fields.values]]
+                        name = "rate"
+                        tag = "reference"
+
+                            [problem.beliefs.values.statistic.fields.fields.values.optic]
+                            tag = "identity"
+                    [[problem.beliefs.values.statistic.fields.fields]]
+                    name = "PredictiveSimulator"
+                    tag = "object"
+
+                        [[problem.beliefs.values.statistic.fields.fields.fields]]
+                        fingerprint = "b522c45303d2a30b1655f192ca12d46e07162fb8729c9bc8d8d2535e3eaf77d7"
+                        id = "detector"
+                        tag = "callback"
+                [[problem.beliefs.values.statistic.fields]]
+                fields = []
+                name = "Mean"
+                tag = "object"
+
+            [problem.beliefs.values.target]
+            tag = "number"
+            type = "Float64"
+            value = "6.0"
+
+    [problem.candidates]
+    tag = "tuple"
+
+        [[problem.candidates.values]]
+        tag = "candidate"
+
+            [problem.candidates.values.definition]
+            name = "ScalarFamily"
+            tag = "family"
+
+                [problem.candidates.values.definition.fields]
+                names = ["parameters", "starts"]
+                tag = "record"
+
+                    [[problem.candidates.values.definition.fields.values]]
+                    names = ["shape", "scale"]
+                    tag = "record"
+
+                        [[problem.candidates.values.definition.fields.values.values]]
+                        tag = "number"
+                        type = "Float64"
+                        value = "2.0"
+                        [[problem.candidates.values.definition.fields.values.values]]
+                        tag = "number"
+                        type = "Float64"
+                        value = "1.0"
+                    [[problem.candidates.values.definition.fields.values]]
+                    tag = "nothing"
+
+                [problem.candidates.values.definition.kind]
+                tag = "symbol"
+                value = "gamma"
+
+            [problem.candidates.values.id]
+            tag = "symbol"
+            value = "gamma"
+
+            [problem.candidates.values.lower]
+            tag = "nothing"
+
+            [problem.candidates.values.requirements]
+            tag = "tuple"
+            values = []
+
+            [problem.candidates.values.scope]
+            name = "rate"
+            tag = "reference"
+
+                [problem.candidates.values.scope.optic]
+                tag = "identity"
+
+            [problem.candidates.values.starts]
+            tag = "tuple"
+
+                [[problem.candidates.values.starts.values]]
+                names = []
+                tag = "record"
+                values = []
+
+            [problem.candidates.values.upper]
+            tag = "nothing"
+
+[report]
+tag = "report"
+
+    [[report.results]]
+    candidate = 1
+
+        [report.results.error]
+        tag = "nothing"
+
+        [report.results.id]
+        tag = "tuple"
+
+            [[report.results.id.values]]
+            name = "rate"
+            tag = "reference"
+
+                [report.results.id.values.optic]
+                tag = "identity"
+            [[report.results.id.values]]
+            tag = "symbol"
+            value = "gamma"
+            [[report.results.id.values]]
+            tag = "number"
+            type = "Int64"
+            value = "1"
+
+        [report.results.parameters]
+        names = []
+        tag = "record"
+        values = []
+
+        [report.results.solver]
+        tag = "nothing"
+
+    [report.sampling]
+    n = 1024
+    tag = "montecarlo"
+
+        [report.sampling.alpha]
+        tag = "number"
+        type = "Float64"
+        value = "0.01"
+
+    [report.seed]
+    tag = "nothing"
+
+[validation]
+checks = [[{error = {tag = "nothing"}, estimate = {evidence = "estimated", lower = {tag = "number", type = "Float64", value = "5.531231910454198"}, n = 1024, tag = "estimate", upper = {tag = "number", type = "Float64", value = "6.328143089545802"}, value = {tag = "number", type = "Float64", value = "5.9296875"}}, id = {tag = "tuple", values = [{tag = "tuple", values = [{tag = "symbol", value = "predictive"}, {tag = "symbol", value = "counts"}]}, {tag = "symbol", value = "mean"}]}, status = "target"}]]
+tag = "validation"
+
+    [validation.plan]
+    n = 1024
+    tag = "montecarlo"
+
+        [validation.plan.alpha]
+        tag = "number"
+        type = "Float64"
+        value = "0.01"
+
+    [validation.seed]
+    tag = "number"
+    type = "UInt64"
+    value = "10079424573392127456"
