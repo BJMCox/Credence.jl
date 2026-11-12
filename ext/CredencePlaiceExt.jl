@@ -20,6 +20,25 @@ for f in (
     @eval Plaice.$f(μ::MeasureBase.AsMeasure) = Plaice.$f(μ.obj)
 end
 
+const TruncatedPrior = Union{
+    MeasureBase.TruncatedMeasure,
+    MeasureBase.NormalizedMeasure{<:MeasureBase.TruncatedMeasure},
+}
+function Plaice.to_unconstrained_vec(μ::TruncatedPrior)
+    mass = MeasureBase.massof(μ)
+    lower = MeasureBase.invsmf(μ, 0)
+    upper = MeasureBase.invsmf(μ, mass)
+    Plaice.VectWrap(Plaice.Untruncate(lower, upper))
+end
+Plaice.from_unconstrained_vec(μ::TruncatedPrior) =
+    Plaice.inverse(Plaice.to_unconstrained_vec(μ))
+Plaice.to_vec(::TruncatedPrior) = Plaice.VectWrap(Plaice.TypedIdentity())
+Plaice.from_vec(μ::TruncatedPrior) = Plaice.inverse(Plaice.to_vec(μ))
+Plaice.vec_length(::TruncatedPrior) = 1
+Plaice.unconstrained_vec_length(::TruncatedPrior) = 1
+Plaice.optic_vec(::TruncatedPrior) = [VarNames.Iden()]
+Plaice.unconstrained_optic_vec(::TruncatedPrior) = [VarNames.Iden()]
+
 const NamedProduct = MeasureBase.ProductMeasure{<:NamedTuple}
 const ArrayProduct = MeasureBase.ProductMeasure{<:AbstractArray}
 

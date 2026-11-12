@@ -2,6 +2,7 @@
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Credence = "178d0c97-14ee-4441-973b-23c323c9f53d"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 HeterogeneousComputing = "2182be2a-124f-4a91-8389-f06db5907a21"
 MeasureBase = "fa1605e6-acd5-459c-a1e6-7e635759db14"
 Optimization = "7f7a1694-90dd-40f0-9382-eb1efda571ba"
@@ -18,6 +19,7 @@ MeasureBase = {rev = "ad53c244f905d57c8f35c15fe1da0ef163023096", url = "https://
 [compat]
 CairoMakie = "0.15"
 Distributions = "0.25"
+ForwardDiff = "1"
 HeterogeneousComputing = "0.3"
 MeasureBase = "0.15"
 Optimization = "4, 5"

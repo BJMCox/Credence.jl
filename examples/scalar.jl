@@ -14,6 +14,7 @@
 # Figures are saved in `elicitation-output` in the working directory.
 
 using Credence, MeasureBase, Optimization, OptimizationOptimJL, Random
+import ForwardDiff
 include(joinpath(pkgdir(Credence), "examples", "signal_background.jl"))
 include(joinpath(pkgdir(Credence), "examples", "feedback.jl"))
 nothing # hide
@@ -62,9 +63,16 @@ nothing # hide
 # Fit both combinations and validate their achieved statistics. `fit_summary` lists
 # fitted parameters and solver outcomes. `belief_summary` lists the achieved judgments
 # and their scaled discrepancies for a chosen result.
+# A small initial step keeps the location probability away from a flat tail region.
 
-initial_report =
-    fit(Xoshiro(42), initial_problem, NelderMead(); maxiters=20000, g_tol=1e-12)
+initial_report = fit(
+    Xoshiro(42),
+    initial_problem,
+    BFGS(initial_stepnorm=0.1);
+    adtype=Optimization.AutoForwardDiff(),
+    maxiters=20000,
+    g_tol=1e-10,
+)
 initial_validation = validate(Xoshiro(43), initial_report)
 display(fit_summary(initial_report))
 display(belief_summary(initial_validation; result_id=(:beta_normal, 1)))
@@ -91,7 +99,14 @@ display(initial_problem[:S, :upper].target * effective_exposure)
 revision_reason = "The expert revised the upper rate quantile after reviewing external rate knowledge and its expected-yield implication."
 problem =
     replace(initial_problem, :S => Approximate(:upper, Quantile(0.95), 3.5; scale=1.0))
-report = fit(Xoshiro(42), problem, NelderMead(); maxiters=20000, g_tol=1e-12)
+report = fit(
+    Xoshiro(42),
+    problem,
+    BFGS(initial_stepnorm=0.1);
+    adtype=Optimization.AutoForwardDiff(),
+    maxiters=20000,
+    g_tol=1e-10,
+)
 display((original=initial_problem[:S, :upper].target, revised=problem[:S, :upper].target))
 validation = validate(Xoshiro(43), report)
 display(fit_summary(report))

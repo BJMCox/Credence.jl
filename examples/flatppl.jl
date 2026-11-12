@@ -13,6 +13,7 @@
 # ```
 
 using Credence, MeasureBase, Optimization, OptimizationOptimJL, Random
+import ForwardDiff
 using Distributions: Poisson, logpdf
 
 # ## Elicit efficiency and event rate
@@ -41,7 +42,14 @@ problem = Elicitation(
     candidates;
     combinations=(:calibration => Independent(:efficiency => :beta, :rate => :gamma),),
 )
-report = fit(Xoshiro(72), problem, NelderMead(); maxiters=10000, g_tol=1e-12)
+report = fit(
+    Xoshiro(72),
+    problem,
+    BFGS();
+    adtype=Optimization.AutoForwardDiff(),
+    maxiters=10000,
+    g_tol=1e-10,
+)
 validation = validate(Xoshiro(73), report)
 selected_id = (:calibration, 1)
 display(belief_summary(validation; result_id=selected_id))

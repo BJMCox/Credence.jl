@@ -19,6 +19,7 @@ using Distributions:
     Laplace,
     Dirichlet
 using LinearAlgebra
+using IntervalSets: ClosedInterval
 using Statistics: Statistics, mean, cov
 using MeasureBase: MeasureBase, AsMeasure, asmeasure
 using Random: Random, AbstractRNG
@@ -231,7 +232,8 @@ function Credence._family_candidate(id, family::Credence.TruncatedFamily)
         end
         starts = (initial,)
     end
-    build = p -> asmeasure(truncated(candidate.build(p).obj, family.lower, family.upper))
+    bounds = ClosedInterval(family.lower, family.upper)
+    build = p -> MeasureBase.normalize(truncate(candidate.build(p), bounds))
     Credence.Candidate(id, build, starts; family)
 end
 

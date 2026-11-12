@@ -51,3 +51,23 @@
     end
     @test ForwardDiff.gradient(density, z) ≈ finite_gradient rtol=sqrt(step) atol=sqrt(step)
 end
+
+@testset "Truncated prior support coordinates" begin
+    for (base, bounds, support) in (
+        (NormalFamily(location=0.0, scale=2.0), (-3.0, 3.0), (-3.0, 3.0)),
+        (LogNormalFamily(location=0.0, scale=0.5), (-1.0, 2.0), (0.0, 2.0)),
+    )
+        family = TruncatedFamily(base, bounds...)
+        prior =
+            only(fit(Xoshiro(902), Elicitation((), (:x => (:law => family,),))).results).measure
+        from = Plaice.from_unconstrained_vec(prior)
+        z = [0.4]
+        point, correction = with_logabsdet_jacobian(from, z)
+        lower, upper = support
+        @test point ≈ lower + (upper-lower)/(1+exp(-only(z)))
+        @test MeasureBase.insupportof(prior, point)
+        @test Plaice.to_unconstrained_vec(prior)(point) ≈ z
+        @test Plaice.from_vec(prior)(Plaice.to_vec(prior)(point)) ≈ point
+        @test correction ≈ log(only(ForwardDiff.jacobian(v -> [from(v)], z)))
+    end
+end
