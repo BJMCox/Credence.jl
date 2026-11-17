@@ -1,3 +1,15 @@
+function _flatppl(prior::FiniteTiltKernel, path)
+    score = _tilt_score(prior)
+    parts = (
+        _flatppl_block(
+            "weighted(",
+            (_flatppl_value(weight, path), "Dirac(" * _flatppl_value(point, path) * ")"),
+            ")",
+        ) for (point, weight) in zip(score.points, score.weights) if !iszero(weight)
+    )
+    _flatppl_block("superpose(", parts, ")")
+end
+
 function _flatppl(prior::EventTiltKernel, path)
     score = _tilt_score(prior)
     event = score.event

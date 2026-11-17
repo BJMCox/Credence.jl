@@ -168,4 +168,6 @@ function Credence.tilt(
     )
 end
 
+include("finite_tilting.jl")
+
 end

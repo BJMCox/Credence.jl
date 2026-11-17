@@ -82,6 +82,9 @@ end
             BoundedKL(lower=0, upper=2),
         )
         @test rand(TiltTestRNG([0.25, 0.0, 0.75, 0.5], 0), measure(cut)) == 0.75
+        finite = measure(FiniteReference((0.0, 1.0), (0.0, 1.0)))
+        @test rand(TiltTestRNG([0.0], 0), finite) == 1.0
+        @test evaluate(Quantile(0.5), finite).value == 1.0
     end
 
     @testset "Analytic continuous moment oracle" begin

@@ -38,6 +38,7 @@ export NormalGammaFamily, GeneralizedDoubleParetoFamily
 
 export BoundedKL, TiltReport, tilt
 export Quadrature, Expectation, logdensity_estimate
+export FiniteReference
 
 include("statistics.jl")
 include("beliefs.jl")
@@ -61,6 +62,7 @@ include("validation.jl")
 include("reporting.jl")
 include("tilting.jl")
 include("tilting_continuous.jl")
+include("tilting_finite.jl")
 include("flatppl.jl")
 include("tilting_flatppl.jl")
 include("compound_flatppl.jl")

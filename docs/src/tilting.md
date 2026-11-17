@@ -66,12 +66,22 @@ Scalar continuous integration requires an atom-free reference with an SMF and in
 Known interval boundaries split the integration domain. `Quadrature` sets the error
 target and evaluation budget over the full reference probability range.
 
+For an actual finite law, declare its support and relative masses with
+`FiniteReference((0.0, 1.0, 2.0), (1, 2, 1))`. Use `IPNewton()` for its constrained
+primal problem. The finite solver supplies objective and constraint derivatives and
+checks the original requirements after solving.
+
+Finite constraints can force atoms to zero mass or to a ratio cap. The solver removes
+coordinates proved fixed by an extremal requirement before optimizing the remaining
+masses. Other boundary faces can leave optimality unresolved. The report distinguishes
+these cases from a proved infeasible requirement.
+
 ## Using the updated prior
 
 The selected measure supports ordinary MeasureBase density evaluation and sampling.
 Its Plaice chart uses the reference support. Conditioning on a connected interval
 restricts that chart to the retained interval. A disconnected support requires a
-separate chart.
+separate chart; finite laws have no continuous chart.
 
 The [Wren integration example](@ref wren-tutorial) accepts such a measure as its prior.
 For example, the selected Normal event tilt above can be used directly:
@@ -99,7 +109,7 @@ FlatPPL export preserves the event weights and the known normalizer:
 flatppl(prior)
 ```
 
-Affine tilts of `StdUniform()` export as clipped
+Finite laws export as weighted atoms. Affine tilts of `StdUniform()` export as clipped
 exponential weights. Arbitrary Julia callbacks require a FlatPPL translator.
 
 ## Numerical evidence
