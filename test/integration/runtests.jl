@@ -76,23 +76,39 @@ end
         (Hard(:positive, Probability(0, Inf), Between(0.68, 0.72)),),
         method,
     )
-    validation = validate(Xoshiro(3501), event)
-    prior = measure(select(event; validation, rationale="Native tilted prior"))
-    z = 0.4
-    expected_value = log(1.36) - (log(2pi)+z*z)/2
-    model = scalar_prior(prior)
-    copies = filter(!=(:prior), WrenCore._copied_args(model))
-    readonly = WrenCore._with_copied_args(model, copies)
-    for adtype in (AutoForwardDiff(), AutoEnzyme(; mode=Reverse))
-        vm = VecModel(
-            readonly,
-            adtype;
-            latent_source=FromPrior(Xoshiro(3511)),
-            reduce_copies=false,
-        )
-        value, gradient = LogDensityProblems.logdensity_and_gradient(vm, [z])
-        @test value ≈ expected_value atol=1e-9
-        @test only(gradient) ≈ -z atol=1e-9
+    moment = tilt(
+        MeasureBase.StdUniform(),
+        (Hard(:mean, Mean(), EqualTo(2-1/log(2))),),
+        method,
+        BFGS();
+        g_tol=1e-11,
+    )
+    for (index, report) in enumerate((event, moment))
+        validation = validate(Xoshiro(3500+index), report)
+        role = index == 1 ? :accepted : :reference
+        prior = measure(select(report; role, validation, rationale="Native tilted prior"))
+        z = 0.4
+        x = 1/(1+exp(-z))
+        expected_value = if index == 1
+            log(1.36) - (log(2pi)+z*z)/2
+        else
+            log(log(2)) + x*log(2) + log(x) + log1p(-x)
+        end
+        expected_gradient = index == 1 ? -z : log(2)*x*(1-x) + 1-2x
+        model = scalar_prior(prior)
+        copies = filter(!=(:prior), WrenCore._copied_args(model))
+        readonly = WrenCore._with_copied_args(model, copies)
+        for adtype in (AutoForwardDiff(), AutoEnzyme(; mode=Reverse))
+            vm = VecModel(
+                readonly,
+                adtype;
+                latent_source=FromPrior(Xoshiro(3510+index)),
+                reduce_copies=false,
+            )
+            value, gradient = LogDensityProblems.logdensity_and_gradient(vm, [z])
+            @test value ≈ expected_value atol=1e-9
+            @test only(gradient) ≈ expected_gradient atol=1e-9
+        end
     end
 end
 

@@ -1,7 +1,7 @@
 # [Updating a reference prior](@id tilting-guide)
 
-Bounded-KL tilting adjusts a fixed reference prior to satisfy further probability
-requirements. It minimizes `D(Q || P)` subject to those requirements and
+Bounded-KL tilting adjusts a fixed reference prior to satisfy further probability or
+expectation requirements. It minimizes `D(Q || P)` subject to those requirements and
 explicit bounds on the density ratio `dQ/dP`. The reference remains fixed throughout
 the fit.
 
@@ -36,6 +36,36 @@ The lower ratio bound preserves the reference's positive-mass regions. A zero lo
 bound permits boundary solutions, including conditioning on an event. Both the event
 and its complement constrain the feasible probability range.
 
+## Moment requirements
+
+General requirements use an Optimization.jl algorithm. The dual objective supplies
+analytic gradients. A Uniform reference below explicitly assumes equal density on
+the unit interval:
+
+```@example tilting
+using Optimization, OptimizationOptimJL
+
+moment_report = tilt(
+    StdUniform(),
+    (Hard(:mean, Mean(), Between(0.55, 0.6)),),
+    method,
+    Fminbox(BFGS());
+    g_tol=1e-10,
+)
+(
+    mean=evaluate(Mean(), measure(moment_report)).value,
+    feasibility=moment_report.feasibility,
+    optimality=moment_report.optimality,
+)
+```
+
+`Mean()` and `Probability(...)` describe linear expectations. `Expectation(f)` applies
+a pointwise function before averaging. Its absolute reference expectation must exist.
+`Statistic(f)` instead receives a measure and retains its separate family-fitting meaning.
+Scalar continuous integration requires an atom-free reference with an SMF and inverse.
+Known interval boundaries split the integration domain. `Quadrature` sets the error
+target and evaluation budget over the full reference probability range.
+
 ## Using the updated prior
 
 The selected measure supports ordinary MeasureBase density evaluation and sampling.
@@ -69,9 +99,29 @@ FlatPPL export preserves the event weights and the known normalizer:
 flatppl(prior)
 ```
 
-## Projection evidence
+Affine tilts of `StdUniform()` export as clipped
+exponential weights. Arbitrary Julia callbacks require a FlatPPL translator.
+
+## Numerical evidence
 
 The report separates solver results, feasibility, optimality, normalization, and density
 ratio bounds. `:within_tolerance` identifies a numerical constraint residual.
 `validate(rng, report)` supplies fresh belief checks. Acceptance requires resolved
 projection evidence and the ordinary validation checks.
+
+Analytic event updates and affine tilts of `StdUniform()` have known normalizers.
+General scalar tilts retain a quadrature estimate separately from their native measure.
+For these fits, `logdensity_estimate(report, x)` returns an `Estimate` with estimated
+normalization error. Ordinary normalized `logdensityof` remains unavailable while the
+normalizer is unknown. Independent rejection draws still target the normalized law.
+
+If the fitted raw weight is `w` and its mass is `Z`, the sampled density ratio is
+`w/Z`. The reported ratio bounds propagate the normalization error. Estimated evidence
+therefore remains separate from a claim that the original ratio bounds hold exactly.
+A nonconverged solver leaves optimality unresolved. An exhausted quadrature budget
+raises an error so the integration settings can be revised.
+
+A numerical fit can be retained with `select(report; role=:reference, validation, rationale="...")`. For posterior inference with this fitted prior held fixed,
+`MeasureBase.basemeasure(measure(report))` supplies the native unnormalized kernel.
+Its missing normalizer is constant across parameter points. Normalized density
+evaluation and marginal likelihoods require the normalization evidence separately.

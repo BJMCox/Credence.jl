@@ -15,7 +15,8 @@ using Random: Random, AbstractRNG, rand, Xoshiro
 using VarNames: VarNames, VarName, getvalue, getsym, getoptic, subsumes
 import StatsAPI: fit
 import Base: unlock
-using Statistics: mean, std, cov, cor, var, quantile
+using Statistics: Statistics, mean, std, cov, cor, var, quantile
+using QuadGK: quadgk
 import TOML, SHA
 
 export Probability, Quantile, Mean, Std, Statistic, Estimate, evaluate
@@ -36,6 +37,7 @@ export GroupHorseshoeFamily, FunctionalHorseshoeFamily, MultiplicativeGammaFamil
 export NormalGammaFamily, GeneralizedDoubleParetoFamily
 
 export BoundedKL, TiltReport, tilt
+export Quadrature, Expectation, logdensity_estimate
 
 include("statistics.jl")
 include("beliefs.jl")
@@ -58,6 +60,7 @@ include("compound_moments.jl")
 include("validation.jl")
 include("reporting.jl")
 include("tilting.jl")
+include("tilting_continuous.jl")
 include("flatppl.jl")
 include("tilting_flatppl.jl")
 include("compound_flatppl.jl")
