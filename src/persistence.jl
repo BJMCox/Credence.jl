@@ -326,6 +326,8 @@ const _session_distributions = (
     :Normal,
     :LogNormal,
     :Beta,
+    :LocationScale,
+    :AffineDistribution,
     :Gamma,
     :Weibull,
     :Exponential,

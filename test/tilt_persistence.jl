@@ -137,6 +137,7 @@ _saved_tilt_square(x) = x*x
     @testset "Native reference measures" begin
         for prior in (
             asmeasure(Normal(0.3, 0.8)),
+            asmeasure(Distributions.LocationScale(-1.0, 2.0, Beta(2.0, 2.0))),
             MeasureBase.normalize(truncate(StdNormal(), -1..1)),
         )
             report=tilt(prior, beliefs, method)
