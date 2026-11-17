@@ -103,10 +103,35 @@ model = VecModel(
 logdensity_and_gradient(model, [0.4])
 ```
 
-FlatPPL export preserves the event weights and the known normalizer:
+## Saved sessions
+
+Each selection retains its `TiltReport`, including the reference, normalization,
+KL divergence, ratio bounds, and projection status. Save the selection with its
+validation and rationale, then reload the fitted state:
 
 ```@example tilting
-flatppl(prior)
+restored = mktempdir() do directory
+    path = joinpath(directory, "calibration-prior.toml")
+    save_session(path, selection; metadata=(parameter=:offset,))
+    load_session(path)
+end
+restored_selection = only(restored.selections)
+(
+    role=restored_selection.role,
+    normalization=restored.report.normalization,
+    logdensity=logdensityof(measure(restored_selection), 1.0),
+)
+```
+
+Loading restores the fitted parameters and retained checks. Numerical normalization
+estimates keep their bounds and evidence. Custom expectation functions use the same
+versioned callback registry for saving and loading, as in other saved sessions.
+
+Pass `measure(restored_selection)` as the prior in the Wren model above. FlatPPL
+export preserves the restored event weights and known normalizer:
+
+```@example tilting
+flatppl(restored_selection)
 ```
 
 Finite laws export as weighted atoms. Affine tilts of `StdUniform()` export as clipped

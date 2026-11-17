@@ -191,6 +191,7 @@ mutable struct FitReport{P,R,S,N}
     const seed::N
 end
 FitReport(problem, results) = FitReport(problem, results, nothing, nothing)
+_fit_report(report::FitReport) = report
 
 """
     diagnostics(problem_or_report)
@@ -316,7 +317,9 @@ function _validate_candidate(candidate)
             foreach(_validate_candidate, candidate.build.parts)
         end
     else
-        _validate_candidate(candidate.report.results[candidate.index].candidate)
+        _validate_candidate(
+            _fit_report(candidate.report).results[candidate.index].candidate,
+        )
     end
     nothing
 end

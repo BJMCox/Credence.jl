@@ -27,7 +27,7 @@ targets or bounds, achieved values and enclosures, evidence, status, RMS scaled
 approximate-target discrepancy, and errors. Set `result_id` to restrict the rows.
 """
 function belief_summary(validation::Validation; result_id=nothing)
-    report = validation.report
+    report = _fit_report(validation.report)
     NamedTuple[
         _belief_row(result.id, belief, check) for
         (result, checks) in zip(report.results, validation.checks) if
@@ -94,7 +94,7 @@ function Base.show(io::IO, validation::Validation)
 end
 function Base.show(io::IO, selection::Selection)
     print(io, "Selection(")
-    show(io, selection.report.results[selection.index].id)
+    show(io, _fit_report(selection.report).results[selection.index].id)
     print(io, ", ", selection.role, ")")
 end
 Base.show(

@@ -58,8 +58,8 @@ end
 
 Restore a saved session as a named record with `problem`, `report`, `validation`,
 `selections`, `history`, `metadata`, and `environment`. Measures are rebuilt from saved
-parameters without optimization. Solver provenance retains its return code and type,
-while callback implementations come from the supplied registry. Package versions and
+parameters without optimization. Solver provenance retains its return code, type, and
+scalar projection diagnostics. Callback implementations come from the supplied registry. Package versions and
 source fingerprints must match before saved validation or acceptance is restored.
 """
 function load_session(path; callbacks=(;))
@@ -128,7 +128,7 @@ end
 
 function _session_state(problem, report, validation, selections, callbacks)
     report === nothing ||
-        report.problem === problem ||
+        _fit_report(report).problem === problem ||
         throw(ArgumentError("the report belongs to another elicitation problem"))
     validation === nothing ||
         (report !== nothing && validation.report === report) ||
@@ -314,6 +314,12 @@ const _session_structs = (
     :Derived,
     :Predictive,
     :On,
+    :BoundedKL,
+    :Expectation,
+    :EventTiltScore,
+    :BoundedKLScore,
+    :FiniteTiltScore,
+    :FiniteReference,
 )
 const _session_distributions = (
     :Normal,
@@ -438,9 +444,10 @@ function _session_pack(x::Candidate, callbacks)
     )
 end
 
-struct SavedSolver
+struct SavedSolver{E}
     retcode::String
     type::String
+    evidence::E
 end
 struct SavedError <: Exception
     message::String
@@ -452,9 +459,25 @@ _session_error(x) =
     _session_tag("error"; message=sprint(showerror, x), type=string(typeof(x)))
 _session_error(x::SavedError) = _session_tag("error"; message=x.message, type=x.type)
 _session_solver(::Nothing) = _session_tag("nothing")
-_session_solver(x) =
-    _session_tag("solver"; retcode=string(x.retcode), type=string(typeof(x)))
-_session_solver(x::SavedSolver) = _session_tag("solver"; retcode=x.retcode, type=x.type)
+_session_solver_evidence(x) = (;)
+function _session_solver_evidence(x::NamedTuple)
+    names=Tuple(
+        k for k in (:dual_gap, :residual, :residual_tolerance, :derivatives) if haskey(x, k)
+    )
+    NamedTuple{names}(map(k -> getproperty(x, k), names))
+end
+_session_solver(x) = _session_tag(
+    "solver";
+    retcode=string(x.retcode),
+    type=string(typeof(x)),
+    evidence=_session_pack(_session_solver_evidence(x), (;)),
+)
+_session_solver(x::SavedSolver) = _session_tag(
+    "solver";
+    retcode=x.retcode,
+    type=x.type,
+    evidence=_session_pack(x.evidence, (;)),
+)
 _session_pack_report(::Nothing, callbacks) = _session_tag("nothing")
 function _session_pack_report(report, callbacks)
     results = map(report.results) do result
@@ -519,7 +542,7 @@ function _session_pack(selection::Selection, callbacks)
     _session_verify_selection(selection)
     _session_tag(
         "selection";
-        problem=_session_pack(selection.report.problem, callbacks),
+        problem=_session_pack(_fit_report(selection.report).problem, callbacks),
         report=_session_pack_report(selection.report, callbacks),
         validation=_session_pack_validation(selection.validation, callbacks),
         index=selection.index,
@@ -621,7 +644,30 @@ function _session_unpack(data, callbacks)
         name in _session_structs || throw(ArgumentError("unsupported saved object $name"))
         fields=Tuple(_session_unpack(v, callbacks) for v in data["fields"])
         name==:Joint && return Joint(only(fields)...)
+        name==:BoundedKL && return BoundedKL(; lower=fields[1], upper=fields[2])
+        if name==:FiniteReference
+            reference=FiniteReference(fields...)
+            # Keep the saved weights rather than normalizing them a second time.
+            copyto!(reference.weights, fields[2])
+            return reference
+        end
         return getfield(Credence, name)(fields...)
+    elseif tag == "measure"
+        return _session_unpack_measure(data, callbacks)
+    elseif tag == "tilt_kernel"
+        return mintegrate_exp(
+            _session_unpack(data["score"], callbacks),
+            _session_unpack(data["base"], callbacks),
+        )
+    elseif tag == "returns"
+        return Returns(_session_unpack(data["value"], callbacks))
+    elseif tag == "identity_function"
+        return identity
+    elseif tag == "asmeasure"
+        return asmeasure(_session_unpack(data["value"], callbacks))
+    elseif tag == "distribution"
+        constructor=_session_unpack(data["constructor"], callbacks)
+        return constructor(_session_unpack(data["parameters"], callbacks)...)
     elseif tag=="distribution_constructor"
         name=Symbol(data["name"])
         name in _session_distributions ||
@@ -692,7 +738,7 @@ function _session_unpack(data, callbacks)
         validation=_session_unpack_validation(data["validation"], report, callbacks)
         return select(
             report,
-            report.results[data["index"]].id;
+            _fit_report(report).results[data["index"]].id;
             validation,
             role=Symbol(data["role"]),
             rationale=_session_unpack(data["rationale"], callbacks),
@@ -779,14 +825,20 @@ function _session_unpack_family(data, callbacks)
 end
 function _session_unpack_report(data, problem, callbacks)
     data["tag"]=="nothing" && return nothing
+    data["tag"]=="tilt_report" &&
+        return _session_unpack_tilt_report(data, problem, callbacks)
     results=map(data["results"]) do row
         candidate=problem.candidates[row["candidate"]]
         id=_session_unpack(row["id"], callbacks)
         parameters=_session_unpack(row["parameters"], callbacks)
         solverdata=row["solver"]
-        solver=nothing
-        solverdata["tag"]=="nothing" ||
-            (solver=SavedSolver(solverdata["retcode"], solverdata["type"]))
+        solver=if solverdata["tag"]=="nothing"
+            nothing
+        else
+            evidence=haskey(solverdata, "evidence") ?
+                     _session_unpack(solverdata["evidence"], callbacks) : (;)
+            SavedSolver(solverdata["retcode"], solverdata["type"], evidence)
+        end
         error=_session_unpack_error(row["error"])
         if error===nothing
             values=_flatten(parameters)
@@ -831,7 +883,7 @@ function _session_selection(data, report, validation, callbacks, ::Val{:load})
         (localvalidation=_session_unpack_validation(data["validation"], report, callbacks))
     select(
         report,
-        report.results[data["index"]].id;
+        _fit_report(report).results[data["index"]].id;
         validation=localvalidation,
         role=Symbol(data["role"]),
         rationale=_session_unpack(data["rationale"], callbacks),

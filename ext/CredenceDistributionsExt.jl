@@ -25,6 +25,21 @@ using MeasureBase: MeasureBase, AsMeasure, asmeasure
 using Random: Random, AbstractRNG
 using VarNames
 
+function Credence._session_pack(law::Distributions.Distribution, callbacks)
+    name=nameof(typeof(law))
+    if !(
+        parentmodule(typeof(law))===Distributions &&
+        name in Credence._session_distributions
+    )
+        return invoke(Credence._session_pack, Tuple{Any,Any}, law, callbacks)
+    end
+    Credence._session_tag(
+        "distribution";
+        constructor=Credence._session_pack(getfield(Distributions, name), callbacks),
+        parameters=Credence._session_pack(Distributions.params(law), callbacks),
+    )
+end
+
 Credence._covariance(prior::AsMeasure) = cov(prior.obj)
 Credence._factor_template(prior::AsMeasure{<:Distributions.AbstractMvTDist}) =
     copy(Distributions.params(prior.obj)[2])

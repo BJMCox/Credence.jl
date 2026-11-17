@@ -115,20 +115,21 @@ struct Selection{R,V,I,N}
     rationale::N
 end
 _factor_scope(selection::Selection) =
-    selection.report.results[selection.index].candidate.scope
+    _fit_report(selection.report).results[selection.index].candidate.scope
 _factor_length(::Selection) = 0
 _factor_law(selection::Selection, parameters) = measure(selection)
 function _requirements(selection::Selection)
-    result = selection.report.results[selection.index]
+    report = _fit_report(selection.report)
+    result = report.results[selection.index]
     filter(
         b -> b isa Hard && _applicable(b.statistic, result.measure, result.candidate.scope),
-        selection.report.problem.beliefs,
+        report.problem.beliefs,
     )
 end
 
 """`unlock(selection)` returns its fitted family start while retaining the selected law's hard beliefs."""
 function unlock(selection::Selection)
-    result = selection.report.results[selection.index]
+    result = _fit_report(selection.report).results[selection.index]
     builder = result.candidate.build
     original = builder isa NamedBuilder ? builder.f : builder
     Candidate(
@@ -157,11 +158,15 @@ end
 Select one concrete result as a reference or accepted prior, preserving its validation.
 """
 function select(report::FitReport, result_id; role=:accepted, validation=nothing, rationale)
+    _select(report, result_id; role, validation, rationale)
+end
+function _select(report, result_id; role=:accepted, validation=nothing, rationale)
+    fit = _fit_report(report)
     role in (:reference, :accepted) ||
         throw(ArgumentError("selection role must be :reference or :accepted"))
-    index = findfirst(r -> r.id == result_id, report.results)
+    index = findfirst(r -> r.id == result_id, fit.results)
     index === nothing && throw(ArgumentError("unknown result ID"))
-    result = report.results[index]
+    result = fit.results[index]
     result.error === nothing || throw(ArgumentError("cannot select a failed candidate"))
     if validation !== nothing
         validation isa Validation ||
@@ -188,7 +193,8 @@ end
 
 Return the selected native MeasureBase measure, separate from its fitting report.
 """
-measure(selection::Selection) = selection.report.results[selection.index].measure
+measure(selection::Selection) =
+    _fit_report(selection.report).results[selection.index].measure
 
 """
     compare(report; validation=nothing)
