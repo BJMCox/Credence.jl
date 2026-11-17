@@ -5,6 +5,9 @@ using Random, MeasureBase, Distributions, PDMats
 include("core.jl")
 include("discrete.jl")
 include("optimization.jl")
+include("tilting.jl")
+include("tilting_moments.jl")
+include("tilting_interop.jl")
 include("inputs.jl")
 include("integration.jl")
 

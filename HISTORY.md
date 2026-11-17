@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+  - Add analytic bounded-KL reference-prior updates for interval probabilities.
   - Preserve undefined population moments during sampled validation and stabilize correlation and R2D2 scales.
   - Distinguish saved callback bodies and preserve linear-range lengths.
   - Reuse compound-prior factors when computing coordinate Jacobians.

@@ -66,6 +66,7 @@ makedocs(;
             "Named inputs" => "inputs.md",
             "Candidate families" => "families.md",
             "Beliefs and validation" => "validation.md",
+            "Reference-prior updates" => "tilting.md",
         ],
         "Reference" => "api.md",
     ],
