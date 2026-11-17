@@ -1,0 +1,20 @@
+flatppl_compat = "0.1"
+
+prior = joint(
+    efficiency = locscale(Beta(11.96995919392685, 3.2356060914404625), 0.0, 1.0),
+    rate = Gamma(3.3654908143733904, 0.7596675974563875)
+)
+
+exposure = 3.0
+observed_count = 11
+
+efficiency = elementof(interval(0.0, 1.0))
+rate = elementof(posreals)
+count ~ Poisson(exposure * efficiency * rate)
+observation_model = kernelof(count, efficiency = efficiency, rate = rate)
+likelihood = likelihoodof(observation_model, observed_count)
+posterior = bayesupdate(likelihood, prior)
+
+point = record(efficiency = 0.8, rate = 4.0)
+prior_logdensity = logdensityof(prior, point)
+posterior_logdensity = logdensityof(posterior, point)
