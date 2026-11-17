@@ -36,6 +36,7 @@ const _session_measures = (
     MeasureBase.NormalizedMeasure,
     MeasureBase.SuperpositionMeasure,
     MeasureBase.TruncatedMeasure,
+    MeasureBase.ProductMeasure,
     MeasureBase.UnknownFiniteMass,
     MeasureBase.UnknownMass,
 )

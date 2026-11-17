@@ -24,12 +24,24 @@ struct IntervalEvent{A,B}
 end
 (event::IntervalEvent)(x) = event.lower < x <= event.upper
 
+struct JointIntervalEvent{I}
+    intervals::I
+end
+function (event::JointIntervalEvent)(x)
+    all(map(keys(event.intervals), values(event.intervals)) do name, interval
+        interval(getproperty(x, name))
+    end)
+end
+
 """
     Probability(a, b)
     Probability(predicate)
+    Probability(; parameter=(a, b), ...)
 
 The probability P(a < X <= b), or an event defined by a predicate.
-A predicate requires a sampling evaluation plan.
+A predicate requires a sampling evaluation plan. Named intervals describe the event
+that all listed parameters lie in their intervals. Named independent scalar measures
+support analytic evaluation of this event.
 """
 struct Probability{F} <: AbstractStatistic
     event::F
@@ -37,6 +49,15 @@ end
 function Probability(lower::Real, upper::Real)
     lower < upper || throw(ArgumentError("interval endpoints must increase"))
     Probability(IntervalEvent(lower, upper))
+end
+function Probability(; intervals...)
+    isempty(intervals) && throw(ArgumentError("supply at least one named interval"))
+    events = map((; intervals...)) do bounds
+        bounds isa Tuple{Real,Real} ||
+            throw(ArgumentError("each named interval needs a pair (lower, upper)"))
+        Probability(bounds...).event
+    end
+    Probability(JointIntervalEvent(events))
 end
 
 """

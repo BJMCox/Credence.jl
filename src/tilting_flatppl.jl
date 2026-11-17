@@ -12,21 +12,25 @@ end
 
 function _flatppl(prior::EventTiltKernel, path)
     score = _tilt_score(prior)
-    event = score.event
-    event isa IntervalEvent || return _flatppl_opaque_tilt(prior, path)
-    lower, upper = _flatppl_value(event.lower, path), _flatppl_value(event.upper, path)
+    base = _flatppl(prior.base, path)
+    condition = _flatppl_event(score.event, "x", path)
     outside, inside = map(w -> _flatppl_value(w, path), score.weights)
-    callback =
-        "x -> ifelse((" *
-        lower *
-        " < x) && (x <= " *
-        upper *
-        "), " *
-        inside *
-        ", " *
-        outside *
-        ")"
-    _flatppl_block("weighted(", (callback, _flatppl(prior.base, path)), ")")
+    callback = "x -> ifelse($condition, $inside, $outside)"
+    _flatppl_block("weighted(", (callback, base), ")")
+end
+
+function _flatppl_event(event::IntervalEvent, variable, path)
+    lower, upper = _flatppl_value(event.lower, path), _flatppl_value(event.upper, path)
+    "($lower < $variable) && ($variable <= $upper)"
+end
+function _flatppl_event(event::JointIntervalEvent, variable, path)
+    join(
+        (
+            _flatppl_event(interval, "$variable.$name", "$path.$name") for
+            (name, interval) in pairs(event.intervals)
+        ),
+        " && ",
+    )
 end
 
 function _flatppl(prior::UniformTiltKernel, path)
