@@ -42,7 +42,7 @@
 end
 
 @testset "Joint tilting with fixed marginals" begin
-    reference = productmeasure((gain=StdUniform(), offset=StdUniform()))
+    reference = productmeasure((gain=StdUniform(), drift=StdUniform(), offset=StdUniform()))
     both = Probability(offset=(1/8, 7/8), gain=(1/4, 1/2))
     beliefs = (Hard(:both, both, EqualTo(7/32)),)
     method = BoundedKL(lower=0.5, upper=2)
@@ -54,9 +54,13 @@ end
     @test marginals(prior) == marginals(reference)
     overlap = Probability(gain=(1/8, 3/8), offset=(3/4, 1))
     @test evaluate(overlap, prior).value ≈ 17/288
+    mixed = Probability(gain=(1/8, 3/8), drift=(1/2, 7/8), offset=(3/4, 1))
+    @test evaluate(mixed, prior).value ≈ 17/768
+    partial = Probability(gain=(1/8, 3/8), drift=(1/2, 7/8))
+    @test evaluate(partial, prior).value == 3/32
     for (gain, offset, ratio) in
         ((1/8, 1/16, 7/6), (3/8, 1/16, 1/2), (1/8, 1/2, 17/18), (3/8, 1/2, 7/6))
-        point = (; gain, offset)
+        point = (; gain, drift=0.4, offset)
         @test logdensityof(prior, point) ≈ logdensityof(reference, point) + log(ratio)
     end
     noop = (Hard(:both, both, Between(0.15, 0.20)),)

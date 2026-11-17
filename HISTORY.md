@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-  - Preserve both marginal laws when tilting a joint interval probability with `preserve_marginals=true`.
+  - Support `preserve_marginals=true` for any named pair in an independent reference prior.
   - Support joint interval-probability tilting of named independent priors.
   - Restore batched draws for named tilted priors.
   - Preserve tilted-prior reports, numerical evidence, and validation through selection and saved sessions.
