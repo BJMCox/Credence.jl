@@ -78,8 +78,8 @@ threshold if you use gradient-based inference. The same `save_session` and
 
 Suppose separate calibration results already determine both marginal laws. A new
 joint probability can change their dependence while keeping both laws fixed.
-Use `preserve_marginals=true` with one belief that names both parameters of an
-independent two-factor reference.
+Use `preserve_marginals=true` with one belief that names a pair of parameters
+in an independent product. All other factors remain independent of the pair.
 
 ```@example joint_tilt
 beliefs = (Hard(:both_positive, both_positive, Between(0.36, 0.37)),)

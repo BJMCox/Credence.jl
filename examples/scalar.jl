@@ -2,7 +2,7 @@
 #
 # A rare-event search distinguishes a narrow Gaussian signal from an exponential background.
 # This example defines the model and fits priors to expert judgments about its parameters.
-# It compares two families, revises a judgment, selects a prior, and examines prior predictions.
+# It compares prior families, incorporates a joint calibration belief, and examines prior predictions.
 #
 # Run the example from the package directory with Julia 1.13 or later:
 #
@@ -156,8 +156,30 @@ decision = (
     rationale="The expert accepts the bounded Beta hyperparameters and calibrated Normal location after reviewing both alternatives.",
 )
 selection = select(report, decision.id; validation, rationale=decision.rationale)
-prior = measure(selection)
+reference = measure(selection)
 nothing # hide
+
+# ## Add a joint calibration belief
+#
+# Suppose further calibration assigns 36% to 37% probability to the location
+# exceeding 125 keV and the resolution exceeding 1.6 keV together. The update
+# changes their dependence and retains all six fitted marginal laws.
+
+high_and_wide = Probability(mu=(location_center, Inf), width=(1.6, Inf))
+joint_beliefs = (Hard(:high_and_wide, high_and_wide, Between(0.36, 0.37)),)
+update =
+    tilt(reference, joint_beliefs, BoundedKL(lower=0.5, upper=2); preserve_marginals=true)
+checks = validate(Xoshiro(47), update)
+calibrated = select(
+    update;
+    validation=checks,
+    rationale="Joint calibration of location and resolution.",
+)
+prior = measure(calibrated)
+display((
+    before=evaluate(high_and_wide, reference).value,
+    after=evaluate(high_and_wide, prior).value,
+))
 
 # ## Generate data from the model
 #
@@ -187,7 +209,7 @@ display((
 ))
 
 # Paired draws show the joint prior. The left panel displays signal rate and location,
-# with signal width shown by colour. These hyperparameters are independent by assumption.
+# with signal width shown by colour. The signal rate remains independent of location and width.
 # The right panel displays two background rates. Their shared uncertain hyperparameters
 # induce dependence. Their covariance is the prior variance of `m_B`.
 

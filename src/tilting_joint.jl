@@ -69,9 +69,9 @@ function _fixed_marginal_tilt(reference, beliefs, method)
     event = belief.statistic.event
     parts = marginals(reference)
     names = keys(event.intervals)
-    length(parts) == length(names) == 2 && all(name -> haskey(parts, name), names) || throw(
+    length(names) == 2 && all(name -> haskey(parts, name), names) || throw(
         ArgumentError(
-            "preserve_marginals needs intervals for both parameters of a two-factor reference",
+            "preserve_marginals needs intervals for two named reference parameters",
         ),
     )
     all(part -> isone(massof(part)), parts) ||
@@ -133,20 +133,24 @@ function _evaluate(
 )
     kernel = prior.base
     reference = kernel.base
-    length(s.event.intervals) == 1 &&
-        return _estimate(_joint_interval_mass(reference, s.event))
     score = _tilt_score(kernel)
-    parts = marginals(reference)
+    query = s.event.intervals
     names = keys(score.event.intervals)
-    all(name -> haskey(parts, name), keys(s.event.intervals)) ||
-        throw(ArgumentError("joint probability names an unknown parameter"))
+    # A query involving at most one tilted factor has the reference probability.
+    if !all(name -> haskey(query, name), names)
+        return _estimate(_joint_interval_mass(reference, s.event))
+    end
+    parts = marginals(reference)
     (a0, a1), (b0, b1) = map(names, values(score.event.intervals)) do name, interval
         part = parts[name]
-        _interval_partition(part, interval, s.event.intervals[name]) ./
+        _interval_partition(part, interval, query[name]) ./
         _interval_partition(part, interval)
     end
     fractions = (a0*b0, a1*b0, a0*b1, a1*b1)
-    _estimate(clamp(sum(score.probabilities .* fractions), 0, 1))
+    other = Base.structdiff(query, score.event.intervals)
+    mass = sum(score.probabilities .* fractions)
+    isempty(other) || (mass *= _joint_interval_mass(reference, JointIntervalEvent(other)))
+    _estimate(clamp(mass, 0, 1))
 end
 
 _evaluate(s::JointIntervalProbability, prior::NamedProductMeasure, ::Analytic, rng) =
