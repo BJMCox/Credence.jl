@@ -30,21 +30,24 @@ struct TiltReport{P,M,F,N,D,R}
     feasibility::Symbol
     optimality::Symbol
 end
+_fit_report(report::TiltReport) = report.fit
 function measure(report::TiltReport)
     result = only(report.fit.results)
     result.measure === nothing && throw(ArgumentError("tilting did not produce a measure"))
     result.measure
 end
-validate(rng::Union{AbstractRNG,GenContext}, report::TiltReport; kwargs...) =
-    validate(rng, report.fit; kwargs...)
-function select(report::TiltReport; role=:accepted, kwargs...)
+function validate(rng::Union{AbstractRNG,GenContext}, report::TiltReport; kwargs...)
+    validation = validate(rng, report.fit; kwargs...)
+    Validation(report, validation.checks, validation.plan, validation.seed)
+end
+function select(report::TiltReport, result_id=(:tilt, 1); role=:accepted, kwargs...)
     role == :accepted &&
         report.feasibility != :feasible &&
         throw(ArgumentError("projection feasibility remains unresolved"))
     role == :accepted &&
         !(report.optimality in (:analytic, :numerical)) &&
         throw(ArgumentError("projection optimality remains unresolved"))
-    select(report.fit, (:tilt, 1); role, kwargs...)
+    _select(report, result_id; role, kwargs...)
 end
 fit_summary(report::TiltReport) = fit_summary(report.fit)
 function _tilt_report(
@@ -59,7 +62,7 @@ function _tilt_report(
     feasibility,
     optimality,
 )
-    candidate = Candidate(:tilt, _ -> prior, [0.0])
+    candidate = Candidate(:tilt, Returns(prior), ((),))
     problem = Elicitation(beliefs, (candidate,))
     error =
         prior === nothing ? ErrorException("tilting did not produce a measure") : nothing

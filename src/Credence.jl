@@ -67,5 +67,6 @@ include("flatppl.jl")
 include("tilting_flatppl.jl")
 include("compound_flatppl.jl")
 include("persistence.jl")
+include("tilt_persistence.jl")
 
 end

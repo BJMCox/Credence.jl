@@ -86,7 +86,13 @@ end
     for (index, report) in enumerate((event, moment))
         validation = validate(Xoshiro(3500+index), report)
         role = index == 1 ? :accepted : :reference
-        prior = measure(select(report; role, validation, rationale="Native tilted prior"))
+        selection = select(report; role, validation, rationale="Native tilted prior")
+        restored = mktempdir() do directory
+            path=joinpath(directory, "prior.toml")
+            save_session(path, selection)
+            load_session(path)
+        end
+        prior = measure(only(restored.selections))
         z = 0.4
         x = 1/(1+exp(-z))
         expected_value = if index == 1
