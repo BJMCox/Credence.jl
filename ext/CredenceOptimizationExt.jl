@@ -1,6 +1,7 @@
 module CredenceOptimizationExt
 
 using Credence
+using MeasureBase
 using HeterogeneousComputing: GenContext
 using Optimization
 using Random: AbstractRNG
@@ -124,6 +125,47 @@ function Credence.fit(
         end
     end
     return Credence.FitReport(problem, Tuple(Iterators.flatten(results)), sampling, seed)
+end
+
+function Credence.tilt(
+    reference::MeasureBase.AbstractMeasure,
+    beliefs,
+    method::Credence.BoundedKL,
+    algorithm;
+    quadrature=Credence.Quadrature(),
+    atol=1e-8,
+    kwargs...,
+)
+    isfinite(atol) && atol > 0 || throw(ArgumentError("atol must be finite and positive"))
+    beliefs = Credence._tilt_beliefs(beliefs)
+    analytic = Credence._event_tilt(reference, beliefs, method)
+    analytic === nothing &&
+        (analytic = Credence._reference_tilt(reference, beliefs, method))
+    analytic === nothing && (analytic = Credence._boundary_tilt(reference, beliefs, method))
+    analytic === nothing || return analytic
+    data = Credence._tilt_data(reference, beliefs, method, quadrature)
+    point = zeros(eltype(data.scales), length(data.terms)+1)
+    for (j, term) in enumerate(data.terms)
+        if isfinite(term.lower)
+            point[j+1] = one(eltype(point))
+        end
+    end
+    objective = OptimizationFunction(
+        (point, _) -> first(Credence._tilt_dual(data, point));
+        grad=(gradient, point, _) ->
+            copyto!(gradient, Credence._tilt_dual(data, point)[2]),
+    )
+    lower = [-Inf; [term.lower for term in data.terms]]
+    bounds = any(isfinite, lower) ? (; lb=lower, ub=fill(Inf, length(lower))) : (;)
+    problem = OptimizationProblem(objective, point; bounds...)
+    solution = Optimization.solve(problem, algorithm; kwargs...)
+    Credence._tilt_continuous_report(
+        data,
+        solution.u,
+        solution;
+        atol,
+        converged=Optimization.successful_retcode(solution.retcode),
+    )
 end
 
 end

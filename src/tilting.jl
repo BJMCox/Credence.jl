@@ -152,7 +152,10 @@ function _check_moment(statistic, prior::NormalizedTilt, scope)
        iszero(first(score.weights)) &&
        isfinite(score.event.lower) &&
        isfinite(score.event.upper) &&
-       statistic isa Union{Mean,Std}
+       (
+           statistic isa Union{Mean,Std} ||
+           (statistic isa Expectation && statistic.f === identity)
+       )
         return nothing
     end
     reference = prior.base.base
@@ -202,16 +205,20 @@ function MeasureBase.invsmf(kernel::EventTiltKernel, p)
 end
 
 """
+    tilt(reference, beliefs, method::BoundedKL, algorithm; kwargs...)
     tilt(reference, beliefs, method::BoundedKL)
 
-Project a fixed probability reference onto an interval-probability requirement.
-The analytic two-cell solution preserves the reference law within each cell.
+Project a fixed probability reference onto linear expectation requirements.
+An Optimization.jl algorithm fits general constraints. A single interval-probability
+constraint has an analytic two-cell solution and requires no optimizer.
 """
 function tilt(reference, beliefs, method::BoundedKL)
     beliefs = _tilt_beliefs(beliefs)
     report = _event_tilt(reference, beliefs, method)
     report === nothing && (report = _reference_tilt(reference, beliefs, method))
-    report === nothing && throw(ArgumentError("no analytic projection for these beliefs"))
+    report === nothing && (report = _boundary_tilt(reference, beliefs, method))
+    report === nothing &&
+        throw(ArgumentError("supply an Optimization.jl algorithm for these beliefs"))
     report
 end
 function _event_tilt(reference, beliefs, method)
