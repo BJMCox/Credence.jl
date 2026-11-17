@@ -1,13 +1,13 @@
-digest = "bd2f3097c1f5c89f63995f93cbddb7b4e861398de6b4e80bddd55a3c3e612ba7"
+digest = "6fd245be0fb14409fdbda1391919eb9a9b45bc7d3a1094a9c70ba78a0ba6f57c"
 format = "Credence session"
 version = 1
 
 [environment]
 Credence = "0.0.1"
-Distributions = "0.25.134"
+Distributions = "0.25.135"
 MeasureBase = "0.15.0"
-julia = "1.13.3"
-source_fingerprint = "1daad72b02ae302d28b2f6d8d0f4ee087216f0c25db0367096308edde4571de1"
+julia = "1.13.4"
+source_fingerprint = "a14a8febd463119ea7d803aec82c7d214f6c6298ad43d5ef44ff7434e4df903f"
 
 [history]
 tag = "tuple"
