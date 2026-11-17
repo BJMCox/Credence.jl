@@ -74,6 +74,34 @@ The density jumps at the event boundary, so check sampler behavior near either
 threshold if you use gradient-based inference. The same `save_session` and
 `flatppl` calls below also work for this prior.
 
+### Keep the marginal laws fixed
+
+Suppose separate calibration results already determine both marginal laws. A new
+joint probability can change their dependence while keeping both laws fixed.
+Use `preserve_marginals=true` with one belief that names both parameters of an
+independent two-factor reference.
+
+```@example joint_tilt
+beliefs = (Hard(:both_positive, both_positive, Between(0.36, 0.37)),)
+fixed = tilt(reference, beliefs, BoundedKL(lower=0.5, upper=2); preserve_marginals=true)
+fixed_prior = measure(fixed)
+(
+    both_positive=evaluate(both_positive, fixed_prior).value,
+    gain_positive=evaluate(Probability(gain=(0, Inf)), fixed_prior).value,
+    offset_positive=evaluate(Probability(offset=(0, Inf)), fixed_prior).value,
+)
+```
+
+The two intervals divide the reference into four cells. The update adds the same
+mass to the two matching cells and removes it from the two mixed cells. The table's
+row and column totals stay fixed. Independence in the reference and constant weights
+within each cell preserve each full marginal law.
+
+The ratio bounds and fixed marginals restrict the joint probability to 0.125–0.375
+in this example. An infeasible belief raises an error with the attainable range.
+Draw a batch with `rand(Xoshiro(705), fixed_prior^32)`. The updated prior supports
+saved sessions and FlatPPL export.
+
 ## Moment requirements
 
 General requirements use an Optimization.jl algorithm. The dual objective supplies

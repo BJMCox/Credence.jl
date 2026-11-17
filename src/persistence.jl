@@ -318,6 +318,7 @@ const _session_structs = (
     :BoundedKL,
     :Expectation,
     :EventTiltScore,
+    :FixedMarginalTiltScore,
     :BoundedKLScore,
     :FiniteTiltScore,
     :FiniteReference,

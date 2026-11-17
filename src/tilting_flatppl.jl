@@ -19,6 +19,16 @@ function _flatppl(prior::EventTiltKernel, path)
     _flatppl_block("weighted(", (callback, base), ")")
 end
 
+function _flatppl(prior::FixedMarginalTiltKernel, path)
+    score = _tilt_score(prior)
+    a, b = map(keys(score.event.intervals), values(score.event.intervals)) do name, interval
+        _flatppl_event(interval, "x.$name", "$path.$name")
+    end
+    w00, w10, w01, w11 = map(w -> _flatppl_value(w, path), score.weights)
+    callback = "x -> ifelse($b, ifelse($a, $w11, $w01), ifelse($a, $w10, $w00))"
+    _flatppl_block("weighted(", (callback, _flatppl(prior.base, path)), ")")
+end
+
 function _flatppl_event(event::IntervalEvent, variable, path)
     lower, upper = _flatppl_value(event.lower, path), _flatppl_value(event.upper, path)
     "($lower < $variable) && ($variable <= $upper)"

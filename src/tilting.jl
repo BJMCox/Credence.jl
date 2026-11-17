@@ -212,15 +212,18 @@ end
 
 """
     tilt(reference, beliefs, method::BoundedKL, algorithm; kwargs...)
-    tilt(reference, beliefs, method::BoundedKL)
+    tilt(reference, beliefs, method::BoundedKL; preserve_marginals=false)
 
 Project a fixed probability reference onto linear expectation requirements.
 An Optimization.jl algorithm fits general constraints. A single interval-probability
 constraint has an analytic two-cell solution and requires no optimizer. Use named
-intervals in `Probability` for a joint update of an independent product.
+intervals in `Probability` for a joint update of an independent product. Set
+`preserve_marginals=true` to keep both marginal laws when a single joint probability
+belief names both parameters of a two-factor reference.
 """
-function tilt(reference, beliefs, method::BoundedKL)
+function tilt(reference, beliefs, method::BoundedKL; preserve_marginals=false)
     beliefs = _tilt_beliefs(beliefs)
+    preserve_marginals && return _fixed_marginal_tilt(reference, beliefs, method)
     report = _event_tilt(reference, beliefs, method)
     report === nothing && (report = _reference_tilt(reference, beliefs, method))
     report === nothing && (report = _boundary_tilt(reference, beliefs, method))
