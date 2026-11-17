@@ -40,3 +40,61 @@
         @test flatppl(restored) == flatppl(selection)
     end
 end
+
+@testset "Joint tilting with fixed marginals" begin
+    reference = productmeasure((gain=StdUniform(), offset=StdUniform()))
+    both = Probability(offset=(1/8, 7/8), gain=(1/4, 1/2))
+    beliefs = (Hard(:both, both, EqualTo(7/32)),)
+    method = BoundedKL(lower=0.5, upper=2)
+    report = tilt(reference, beliefs, method; preserve_marginals=true)
+    validation = validate(Xoshiro(113), report)
+    choice = select(report; validation, rationale="Keep the calibration marginals")
+    prior = measure(choice)
+    @test evaluate(both, prior).value == 7/32
+    @test marginals(prior) == marginals(reference)
+    overlap = Probability(gain=(1/8, 3/8), offset=(3/4, 1))
+    @test evaluate(overlap, prior).value ≈ 17/288
+    for (gain, offset, ratio) in
+        ((1/8, 1/16, 7/6), (3/8, 1/16, 1/2), (1/8, 1/2, 17/18), (3/8, 1/2, 7/6))
+        point = (; gain, offset)
+        @test logdensityof(prior, point) ≈ logdensityof(reference, point) + log(ratio)
+    end
+    noop = (Hard(:both, both, Between(0.15, 0.20)),)
+    @test measure(tilt(reference, noop, method; preserve_marginals=true)) === reference
+    impossible = (Hard(:both, both, EqualTo(1/4)),)
+    @test_throws ArgumentError tilt(reference, impossible, method; preserve_marginals=true)
+
+    mktempdir() do directory
+        path = joinpath(directory, "fixed-marginals.toml")
+        save_session(path, choice)
+        restored = only(load_session(path).selections)
+        @test evaluate(overlap, measure(restored)).value == evaluate(overlap, prior).value
+        rng = Xoshiro(114)
+        @test rand(Xoshiro(114), measure(restored)^32) == [rand(rng, prior) for _ in 1:32]
+        @test flatppl(restored) == flatppl(choice)
+    end
+
+    halves = Probability(gain=(1/2, 1), offset=(1/2, 1))
+    for (target, lower) in ((0.275, 0.9), (0.001, 0.0))
+        fit = tilt(
+            reference,
+            (Hard(:both, halves, EqualTo(target)),),
+            BoundedKL(; lower, upper=2);
+            preserve_marginals=true,
+        )
+        @test only(only(validate(Xoshiro(115), fit).checks)).status == :satisfied
+    end
+    anticorrelated = measure(
+        tilt(
+            reference,
+            (Hard(:both, halves, EqualTo(0)),),
+            BoundedKL(lower=0, upper=2);
+            preserve_marginals=true,
+        ),
+    )
+    rng = Xoshiro(116)
+    @test all(
+        x -> (x.gain > 1/2) != (x.offset > 1/2),
+        [rand(rng, anticorrelated) for _ in 1:32],
+    )
+end

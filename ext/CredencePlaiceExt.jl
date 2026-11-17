@@ -26,6 +26,11 @@ _tilt_chart_reference(μ::Credence.TiltKernel) = μ.base
 function _tilt_chart_reference(μ::Credence.FiniteTiltKernel)
     throw(ArgumentError("finite tilted laws have no continuous support chart"))
 end
+function _tilt_chart_reference(μ::Credence.FixedMarginalTiltKernel)
+    all(>(0), Credence._tilt_score(μ).weights) ||
+        throw(ArgumentError("joint tilts with zero cell mass require a support chart"))
+    μ.base
+end
 function _tilt_chart_reference(μ::Credence.EventTiltKernel)
     score = Credence._tilt_score(μ)
     all(>(0), score.weights) && return μ.base

@@ -75,25 +75,28 @@ end
         offset=MeasureBase.StdNormal(),
     ))
     event = Probability(gain=(0, Inf), offset=(0, Inf))
-    report = tilt(
-        reference,
-        (Hard(:both, event, EqualTo(0.375)),),
-        BoundedKL(lower=0.5, upper=2),
-    )
-    model = scalar_prior(measure(report))
-    copies = filter(!=(:prior), WrenCore._copied_args(model))
-    readonly = WrenCore._with_copied_args(model, copies)
-    z = [0.3, 0.4]
-    for adtype in (AutoForwardDiff(), AutoEnzyme(; mode=Reverse))
-        vm = VecModel(
-            readonly,
-            adtype;
-            latent_source=FromPrior(Xoshiro(3513)),
-            reduce_copies=false,
+    for preserve_marginals in (false, true)
+        report = tilt(
+            reference,
+            (Hard(:both, event, EqualTo(0.375)),),
+            BoundedKL(lower=0.5, upper=2);
+            preserve_marginals,
         )
-        value, gradient = LogDensityProblems.logdensity_and_gradient(vm, z)
-        @test value ≈ log(1.5) - log(2pi) - sum(abs2, z)/2
-        @test gradient ≈ -z
+        model = scalar_prior(measure(report))
+        copies = filter(!=(:prior), WrenCore._copied_args(model))
+        readonly = WrenCore._with_copied_args(model, copies)
+        z = [0.3, 0.4]
+        for adtype in (AutoForwardDiff(), AutoEnzyme(; mode=Reverse))
+            vm = VecModel(
+                readonly,
+                adtype;
+                latent_source=FromPrior(Xoshiro(3513)),
+                reduce_copies=false,
+            )
+            value, gradient = LogDensityProblems.logdensity_and_gradient(vm, z)
+            @test value ≈ log(1.5) - log(2pi) - sum(abs2, z)/2
+            @test gradient ≈ -z
+        end
     end
 end
 
