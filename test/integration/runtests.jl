@@ -69,6 +69,33 @@ end
     theta ~ prior
 end
 
+@testset "Native tilted priors retain Wren gradients" begin
+    method = BoundedKL(lower=0.5, upper=2)
+    event = tilt(
+        MeasureBase.StdNormal(),
+        (Hard(:positive, Probability(0, Inf), Between(0.68, 0.72)),),
+        method,
+    )
+    validation = validate(Xoshiro(3501), event)
+    prior = measure(select(event; validation, rationale="Native tilted prior"))
+    z = 0.4
+    expected_value = log(1.36) - (log(2pi)+z*z)/2
+    model = scalar_prior(prior)
+    copies = filter(!=(:prior), WrenCore._copied_args(model))
+    readonly = WrenCore._with_copied_args(model, copies)
+    for adtype in (AutoForwardDiff(), AutoEnzyme(; mode=Reverse))
+        vm = VecModel(
+            readonly,
+            adtype;
+            latent_source=FromPrior(Xoshiro(3511)),
+            reduce_copies=false,
+        )
+        value, gradient = LogDensityProblems.logdensity_and_gradient(vm, [z])
+        @test value ≈ expected_value atol=1e-9
+        @test only(gradient) ≈ -z atol=1e-9
+    end
+end
+
 @testset "Scalar selected prior with Enzyme" begin
     candidate = Candidate(:normal, p -> MeasureBase.asmeasure(Normal(p[1], 0.8)), [0.2])
     problem = Elicitation([Hard(:mean, Mean(), EqualTo(0.2))], [candidate])

@@ -2,8 +2,55 @@ module CredencePlaiceExt
 
 using Credence
 using MeasureBase: MeasureBase
+using IntervalSets: (..)
 using Plaice: Plaice
 using VarNames: VarNames
+
+const ScalarStandard =
+    Union{MeasureBase.StdNormal,MeasureBase.StdUniform,MeasureBase.StdExponential}
+_standard_chart(::MeasureBase.StdNormal) = Plaice.TypedIdentity()
+_standard_chart(::MeasureBase.StdUniform) = Plaice.Untruncate(0, 1)
+_standard_chart(::MeasureBase.StdExponential) = Plaice.Log(0, 1)
+Plaice.to_vec(::ScalarStandard) = Plaice.VectWrap(Plaice.TypedIdentity())
+Plaice.from_vec(μ::ScalarStandard) = Plaice.inverse(Plaice.to_vec(μ))
+Plaice.to_unconstrained_vec(μ::ScalarStandard) = Plaice.VectWrap(_standard_chart(μ))
+Plaice.from_unconstrained_vec(μ::ScalarStandard) =
+    Plaice.inverse(Plaice.to_unconstrained_vec(μ))
+Plaice.vec_length(::ScalarStandard) = 1
+Plaice.unconstrained_vec_length(::ScalarStandard) = 1
+Plaice.optic_vec(::ScalarStandard) = [VarNames.Iden()]
+Plaice.unconstrained_optic_vec(::ScalarStandard) = [VarNames.Iden()]
+
+_tilt_chart_reference(μ::Credence.NormalizedTilt) = _tilt_chart_reference(μ.base)
+_tilt_chart_reference(μ::Credence.TiltKernel) = μ.base
+function _tilt_chart_reference(μ::Credence.EventTiltKernel)
+    score = Credence._tilt_score(μ)
+    all(>(0), score.weights) && return μ.base
+    lower, upper = _chart_bounds(μ.base)
+    if iszero(first(score.weights))
+        lower, upper = max(lower, score.event.lower), min(upper, score.event.upper)
+    elseif score.event.lower <= lower
+        lower = max(lower, score.event.upper)
+    elseif score.event.upper >= upper
+        upper = min(upper, score.event.lower)
+    else
+        throw(ArgumentError("a tilted law with disconnected support needs a support chart"))
+    end
+    MeasureBase.normalize(truncate(μ.base, lower..upper))
+end
+for f in (
+    :to_vec,
+    :from_vec,
+    :to_unconstrained_vec,
+    :from_unconstrained_vec,
+    :vec_length,
+    :unconstrained_vec_length,
+    :optic_vec,
+    :unconstrained_optic_vec,
+)
+    @eval Plaice.$f(μ::Union{Credence.TiltKernel,Credence.NormalizedTilt}) =
+        Plaice.$f(_tilt_chart_reference(μ))
+end
 
 # Wrapped laws retain their support charts rather than using a transport that
 # whitens the prior or changes the original-space coordinates.
@@ -25,10 +72,18 @@ const TruncatedPrior = Union{
     MeasureBase.NormalizedMeasure{<:MeasureBase.TruncatedMeasure},
 }
 function Plaice.to_unconstrained_vec(μ::TruncatedPrior)
-    mass = MeasureBase.massof(μ)
-    lower = MeasureBase.invsmf(μ, 0)
-    upper = MeasureBase.invsmf(μ, mass)
+    lower, upper = _chart_bounds(μ)
     Plaice.VectWrap(Plaice.Untruncate(lower, upper))
+end
+function _chart_bounds(μ)
+    chart = Plaice.from_unconstrained_vec(μ)
+    minmax(chart([-Inf]), chart([Inf]))
+end
+_chart_bounds(μ::MeasureBase.NormalizedMeasure{<:MeasureBase.TruncatedMeasure}) =
+    _chart_bounds(μ.base)
+function _chart_bounds(μ::MeasureBase.TruncatedMeasure)
+    lower, upper = _chart_bounds(μ.parent)
+    max(lower, μ.lo), min(upper, μ.hi)
 end
 Plaice.from_unconstrained_vec(μ::TruncatedPrior) =
     Plaice.inverse(Plaice.to_unconstrained_vec(μ))

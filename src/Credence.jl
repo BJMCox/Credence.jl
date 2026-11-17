@@ -35,6 +35,8 @@ export HorseshoeFamily, RegularizedHorseshoeFamily, R2D2Family, DirichletLaplace
 export GroupHorseshoeFamily, FunctionalHorseshoeFamily, MultiplicativeGammaFamily
 export NormalGammaFamily, GeneralizedDoubleParetoFamily
 
+export BoundedKL, TiltReport, tilt
+
 include("statistics.jl")
 include("beliefs.jl")
 include("targets.jl")
@@ -55,7 +57,9 @@ include("evaluation.jl")
 include("compound_moments.jl")
 include("validation.jl")
 include("reporting.jl")
+include("tilting.jl")
 include("flatppl.jl")
+include("tilting_flatppl.jl")
 include("compound_flatppl.jl")
 include("persistence.jl")
 
