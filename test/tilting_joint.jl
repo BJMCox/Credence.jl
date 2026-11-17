@@ -19,6 +19,9 @@
         @test logdensityof(prior, point) ≈ logdensityof(reference, point) + log(ratio)
     end
 
+    rng = Xoshiro(117)
+    @test rand(Xoshiro(117), prior^32) == [rand(rng, prior) for _ in 1:32]
+
     conditioned =
         tilt(reference, (Hard(:both, both, EqualTo(1)),), BoundedKL(lower=0, upper=4))
     @test evaluate(both, measure(conditioned)).value == 1

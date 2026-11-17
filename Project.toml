@@ -30,7 +30,7 @@ CredenceOptimizationExt = "Optimization"
 CredencePlaiceExt = ["Plaice", "VarNames"]
 
 [sources]
-MeasureBase = {url = "https://github.com/JuliaMath/MeasureBase.jl", rev = "52c73ee2e78cfbfd918ca136f0c820894aad5015"}
+MeasureBase = {url = "https://github.com/JuliaMath/MeasureBase.jl", rev = "235c1e611c00fa0e4d5a8323bb4414b39670d52e"}
 HeterogeneousComputing = {url = "https://github.com/oschulz/HeterogeneousComputing.jl", rev = "18f24c9b7b7ad92e89cabb96cddfd4ef12d4565d"}
 
 [compat]
