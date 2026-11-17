@@ -136,6 +136,9 @@ const TiltKernel =
     MeasureBase.DensityMeasure{<:MeasureBase.LogFuncDensity{<:AbstractTiltScore}}
 const EventTiltKernel =
     MeasureBase.DensityMeasure{<:MeasureBase.LogFuncDensity{<:EventTiltScore}}
+const IntervalTiltKernel = MeasureBase.DensityMeasure{
+    <:MeasureBase.LogFuncDensity{<:EventTiltScore{<:IntervalEvent}},
+}
 const NormalizedTilt = MeasureBase.NormalizedMeasure{<:TiltKernel}
 _tilt_score(kernel::TiltKernel) = MeasureBase.logdensityof(kernel.f)
 MeasureBase.massof(kernel::TiltKernel) = _tilt_score(kernel).mass
@@ -151,7 +154,7 @@ function _check_moment(statistic, prior::NormalizedTilt, scope)
     _moment_order(_statistic(statistic)) == 0 && return nothing
     score = _tilt_score(prior.base)
     # A bounded event can remove divergent reference tails entirely.
-    if score isa EventTiltScore &&
+    if score isa EventTiltScore{<:IntervalEvent} &&
        iszero(first(score.weights)) &&
        isfinite(score.event.lower) &&
        isfinite(score.event.upper) &&
@@ -183,7 +186,7 @@ _evaluate(
     ::Analytic,
     rng,
 ) = throw(NoAnalytic(s))
-function MeasureBase.smf(kernel::EventTiltKernel, x)
+function MeasureBase.smf(kernel::IntervalTiltKernel, x)
     score = _tilt_score(kernel)
     event = score.event
     total = smf(kernel.base, -Inf, x)
@@ -191,8 +194,8 @@ function MeasureBase.smf(kernel::EventTiltKernel, x)
         x <= event.lower ? zero(total) : smf(kernel.base, event.lower, min(x, event.upper))
     score.weights[1] * total + (score.weights[2]-score.weights[1]) * selected
 end
-MeasureBase.smf(kernel::EventTiltKernel, a, b) = smf(kernel, b) - smf(kernel, a)
-function MeasureBase.invsmf(kernel::EventTiltKernel, p)
+MeasureBase.smf(kernel::IntervalTiltKernel, a, b) = smf(kernel, b) - smf(kernel, a)
+function MeasureBase.invsmf(kernel::IntervalTiltKernel, p)
     score = _tilt_score(kernel)
     a = smf(kernel.base, -Inf, score.event.lower)
     b = smf(kernel.base, -Inf, score.event.upper)
@@ -213,7 +216,8 @@ end
 
 Project a fixed probability reference onto linear expectation requirements.
 An Optimization.jl algorithm fits general constraints. A single interval-probability
-constraint has an analytic two-cell solution and requires no optimizer.
+constraint has an analytic two-cell solution and requires no optimizer. Use named
+intervals in `Probability` for a joint update of an independent product.
 """
 function tilt(reference, beliefs, method::BoundedKL)
     beliefs = _tilt_beliefs(beliefs)
@@ -228,7 +232,10 @@ function _event_tilt(reference, beliefs, method)
     length(beliefs) == 1 || return nothing
     belief = only(beliefs)
     statistic = belief.statistic
-    statistic isa Probability{<:IntervalEvent} || return nothing
+    statistic isa Probability{<:Union{IntervalEvent,JointIntervalEvent}} || return nothing
+    if statistic isa JointIntervalProbability && !(reference isa NamedProductMeasure)
+        throw(ArgumentError("joint probability tilting needs a named independent product"))
+    end
     isone(massof(reference)) || throw(ArgumentError("reference must be normalized"))
     p = evaluate(statistic, reference).value
     lo = max(method.lower*p, 1-method.upper*(1-p))

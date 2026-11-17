@@ -304,6 +304,7 @@ const _session_structs = (
     :CorrelationMatrix,
     :Probability,
     :IntervalEvent,
+    :JointIntervalEvent,
     :Statistic,
     :PredictiveSimulator,
     :AtLeast,

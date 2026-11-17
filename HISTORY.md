@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+  - Support joint interval-probability tilting of named independent priors.
   - Preserve tilted-prior reports, numerical evidence, and validation through selection and saved sessions.
   - Add analytic bounded-KL reference-prior updates for interval probabilities.
   - Add scalar continuous bounded-KL projection with explicit normalization evidence.

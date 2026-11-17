@@ -29,6 +29,8 @@ end
 function _tilt_chart_reference(μ::Credence.EventTiltKernel)
     score = Credence._tilt_score(μ)
     all(>(0), score.weights) && return μ.base
+    score.event isa Credence.IntervalEvent ||
+        throw(ArgumentError("joint tilts with zero cell mass require a support chart"))
     lower, upper = _chart_bounds(μ.base)
     if iszero(first(score.weights))
         lower, upper = max(lower, score.event.lower), min(upper, score.event.upper)

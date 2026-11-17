@@ -36,6 +36,44 @@ The lower ratio bound preserves the reference's positive-mass regions. A zero lo
 bound permits boundary solutions, including conditioning on an event. Both the event
 and its complement constrain the feasible probability range.
 
+## Joint probability requirements
+
+Suppose two standardized calibration errors start as independent standard Normals.
+Each is positive half the time, so both are positive in one quarter of draws.
+The expert expects both errors to be positive together 40% to 45% of the time.
+
+```@example joint_tilt
+using Credence, MeasureBase, Random
+
+reference = productmeasure((gain=StdNormal(), offset=StdNormal()))
+both_positive = Probability(gain=(0, Inf), offset=(0, Inf))
+beliefs = (Hard(:both_positive, both_positive, Between(0.4, 0.45)),)
+report = tilt(reference, beliefs, BoundedKL(lower=0.5, upper=2))
+checks = validate(Xoshiro(704), report)
+choice = select(report; validation=checks, rationale="Reviewed joint calibration")
+prior = measure(choice)
+
+(
+    both_positive=evaluate(both_positive, prior).value,
+    gain_positive=evaluate(Probability(gain=(0, Inf)), prior).value,
+    offset_positive=evaluate(Probability(offset=(0, Inf)), prior).value,
+)
+```
+
+The prior closest to the reference in KL divergence assigns 40% probability
+to the event. It multiplies the reference density by 1.6 inside the event and 0.8
+outside. Each parameter now has a 60% chance of being positive. This joint update
+changes the marginals as well as their dependence.
+
+Each named interval uses `lower < value <= upper`. Leave a parameter out to let it
+take any value. The reference must be an independent product with scalar interval
+probabilities. A single joint probability update uses the analytic solution above.
+
+Use the resulting named prior directly in Wren when both cells retain positive mass.
+The density jumps at the event boundary, so check sampler behavior near either
+threshold if you use gradient-based inference. The same `save_session` and
+`flatppl` calls below also work for this prior.
+
 ## Moment requirements
 
 General requirements use an Optimization.jl algorithm. The dual objective supplies
