@@ -11,18 +11,14 @@
 # julia --project=test/integration examples/wren.jl
 # ```
 #
-# The environment pins development versions of Wren, Plaice, and MeasureBase.
+# The project lists the public source for Wren while it awaits registration.
 
 using Credence
 using MeasureBase: MeasureBase
 using Distributions: Normal, MvNormal, LogNormal
-using Plaice
-using PDMats
 using Optimization, OptimizationOptimJL
 import ForwardDiff
-using Wren: @wren, @observe, nuts, AutoEnzyme, Reverse
-import WrenCore
-import Enzyme
+using Wren: @wren, @observe, nuts, AutoForwardDiff, parameters, simulate
 using Random: Xoshiro
 using VarNames: @vn
 
@@ -108,7 +104,8 @@ model = regression(prior, 0.4)
 @wren function future_observation(beta, sigma)
     outcome ~ Normal(beta[1] + 2 * beta[2], sigma)
 end
-simulate_future(rng, beta, sigma) = rand(rng, future_observation(beta, sigma))[@vn(outcome)]
+simulate_future(rng, beta, sigma) =
+    parameters(simulate(future_observation(beta, sigma), rng))[@vn(outcome)]
 future_y = Predictive(:future_y, (:beta, :sigma); simulator=simulate_future)
 predictive_problem = Elicitation(
     (future_y => (Approximate(:mean, Mean(), 0.0; scale=1.0),),),
@@ -123,23 +120,9 @@ display(belief_summary(predictive_validation))
 #
 # ## Sample the posterior
 #
-# NUTS uses Enzyme to differentiate the posterior log density. The pinned Enzyme version
-# has a copy issue for this measure, tracked in
-# [Enzyme #3527](https://github.com/EnzymeAD/Enzyme.jl/issues/3527) and
-# [#3561](https://github.com/EnzymeAD/Enzyme.jl/issues/3561).
-# This model reads `prior` without mutation, so its defensive copy can be disabled through
-# Wren's internal API. The remaining arguments keep their copy settings.
+# Use ForwardDiff for the three-dimensional posterior log density.
 
-copies = filter(!=(:prior), WrenCore._copied_args(model))
-model = WrenCore._with_copied_args(model, copies)
-chain = nuts(
-    Xoshiro(1003),
-    model,
-    200;
-    adtype=AutoEnzyme(; mode=Reverse),
-    reduce_copies=false,
-    progress=false,
-)
+chain = nuts(Xoshiro(1003), model, 200; adtype=AutoForwardDiff(), progress=false)
 display(size(chain))
 
 # `chain` contains 200 posterior draws in one FlexiChains chain, conditional on `y = 0.4`.
