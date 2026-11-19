@@ -23,7 +23,7 @@ candidates = (
 problem = Elicitation(beliefs, candidates)
 report = fit(Xoshiro(201), problem, BFGS(); adtype=Optimization.AutoForwardDiff())
 validation = validate(Xoshiro(202), report)
-belief_summary(validation)
+validation
 
 # The scales express how much a discrepancy in hours contributes to fitting.
 # Both families can match the two quantiles. Compare the implied chance of a repair

@@ -114,14 +114,21 @@ Custom evaluators that return statistical enclosures must supply their own joint
 
 ## Inspecting results
 
-`fit_summary(report)` returns rows containing fitted parameters, solver outcomes, and errors.
-`belief_summary(validation)` returns achieved statistics, uncertainty bounds, status, and
-scaled discrepancies alongside the original judgments. Set `result_id` to inspect one result:
+Display the report to compare fitted parameters and solver outcomes.
 
 ```@example validation
-fit_summary(report)
-belief_summary(validation; result_id=(:normal, 1))
+report
 ```
+
+Display validation to compare each estimate with its judgment. Sampled rows show their
+enclosures and sample counts. The display rounds numerical values.
+
+```@example validation
+validation
+```
+
+Use `fit_summary(report)` or `belief_summary(validation)` to work with the full-precision
+rows in code. Pass `result_id` to `belief_summary` to inspect one result.
 
 Load CairoMakie and call [`priorplot`](@ref) with a fit report or its validation
 to overlay densities on a common interval. The

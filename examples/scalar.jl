@@ -60,9 +60,7 @@ nothing # hide
 
 # ## Fit the candidate priors
 #
-# Fit both combinations and validate their achieved statistics. `fit_summary` lists
-# fitted parameters and solver outcomes. `belief_summary` lists the achieved judgments
-# and their scaled discrepancies for a chosen result.
+# Fit both combinations and check their fitted statistics against the judgments.
 # A small initial step keeps the location probability away from a flat tail region.
 
 initial_report = fit(
@@ -74,8 +72,7 @@ initial_report = fit(
     g_tol=1e-10,
 )
 initial_validation = validate(Xoshiro(43), initial_report)
-display(fit_summary(initial_report))
-display(belief_summary(initial_validation; result_id=(:beta_normal, 1)))
+initial_validation
 
 # ## Review a judgment
 #
@@ -109,12 +106,9 @@ report = fit(
 )
 display((original=initial_problem[:S, :upper].target, revised=problem[:S, :upper].target))
 validation = validate(Xoshiro(43), report)
-display(fit_summary(report))
 all(result -> result.error === nothing, report.results) ||
     error("Inspect failed starts before continuing.")
-display(belief_summary(validation; result_id=(:beta_normal, 1)))
-comparison = compare(report)
-display(comparison.incomparable)
+report
 
 # Compare the revised fits by their discrepancies, then review the distributional assumptions.
 #
@@ -149,8 +143,10 @@ nothing # hide
 # `:target`, and the candidate supports enforce the parameter bounds. Review the achieved
 # values and family assumptions before recording a selection.
 
-display(validation)
-display(belief_summary(validation; result_id=(:beta_normal, 1)))
+validation
+
+# Record which candidate to use and why.
+
 decision = (
     id=(:beta_normal, 1),
     rationale="The expert accepts the bounded Beta hyperparameters and calibrated Normal location after reviewing both alternatives.",

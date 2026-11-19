@@ -42,10 +42,7 @@ problem = Elicitation(beliefs, candidates)
 report = fit(Xoshiro(1), problem)
 validation = validate(Xoshiro(2), report)
 
-map(validation.checks) do checks
-    check = only(checks)
-    (; median=check.estimate.value, status=check.status)
-end
+validation
 ```
 
 `fit` evaluates each candidate at its declared parameters. The Normal median

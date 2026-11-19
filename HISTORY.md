@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+  - Display candidate fits and belief checks as tables in the REPL and documentation.
   - Add comparative scalar prior density plots through an optional Makie extension.
   - Support `preserve_marginals=true` for any named pair in an independent reference prior.
   - Support joint interval-probability tilting of named independent priors.

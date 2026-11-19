@@ -17,7 +17,7 @@ candidates = (
 problem = Elicitation(beliefs, candidates)
 report = fit(Xoshiro(101), problem)
 validation = validate(Xoshiro(102), report)
-belief_summary(validation)
+validation
 
 # ## Compare the fitted priors
 #

@@ -210,7 +210,7 @@ report = fit(
     maxiters=300,
 )
 validation = validate(Xoshiro(92), report; sampling=MonteCarlo(4096))
-belief_summary(validation)
+validation
 ```
 
 Each independent prior draw produces one observation. Beliefs about the same predictive
@@ -313,7 +313,7 @@ save_session(
     callbacks,
 )
 restored_predictive = load_session(callback_path; callbacks)
-belief_summary(restored_predictive.validation)
+restored_predictive.validation
 ```
 
 Callback fingerprints cover available source code and serializable captured values.

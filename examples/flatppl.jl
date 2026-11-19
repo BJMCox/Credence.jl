@@ -53,7 +53,7 @@ report = fit(
 )
 validation = validate(Xoshiro(73), report)
 selected_id = (:calibration, 1)
-display(belief_summary(validation; result_id=selected_id))
+validation
 
 # Review the fitted quantiles and record acceptance of the family assumptions.
 
