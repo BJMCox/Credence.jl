@@ -18,23 +18,21 @@ cd Credence.jl
 julia --project=. dev/setup.jl
 ```
 
-The package supports Julia 1.10 and later. The examples require Julia 1.13 or later because
-their environments pin development versions of MeasureBase and Wren through Pkg source entries.
+The package supports Julia 1.10 and later. Use Julia 1.13 or later for the examples.
 
 ## A first example
 
 Suppose the prior median of `x` must lie between -0.1 and 0.1. Represent this requirement
-with `Hard`, and consider Normal and LogNormal families:
+with `Hard`, and compare standard Normal and Exponential priors:
 
 ```@example start
 using Credence, MeasureBase, Random
-import Distributions
 
 beliefs = (:x => (Hard(:median, Quantile(0.5), Between(-0.1, 0.1)),),)
 candidates = (
     :x => (
-        :normal => NormalFamily(location=0.0),
-        :lognormal => LogNormalFamily(location=0.0),
+        Candidate(:normal, _ -> StdNormal(), [0.0]),
+        Candidate(:exponential, _ -> StdExponential(), [0.0]),
     ),
 )
 problem = Elicitation(beliefs, candidates)
@@ -47,9 +45,9 @@ map(validation.checks) do checks
 end
 ```
 
-With no optimization algorithm supplied, `fit` evaluates each family's starting parameters.
-The Normal median is 0 and satisfies the requirement. The LogNormal median is 1 and falls
-outside the interval.
+`fit` evaluates each candidate at its declared starting parameters. The Normal median
+is 0 and satisfies the requirement. The Exponential median is `log(2)` and falls outside
+the interval.
 
 After reviewing these checks, select the Normal result and record the reason:
 
@@ -85,10 +83,12 @@ exports the fitted prior, and defines a counting likelihood in FlatPPL.
 
 [Named inputs](@ref input-guide) describes parameter references, arrays, and joint beliefs.
 [Beliefs and validation](@ref validation-guide) defines the fitting objective, candidate
-comparisons, and the evidence required for acceptance. The [API reference](@ref api-reference)
-contains the constructor and method documentation.
+comparisons, and the evidence required for acceptance.
+[Updating a reference prior](@ref tilting-guide) covers tilting for further probability or
+expectation requirements. The [API reference](@ref api-reference) documents the constructors
+and methods.
 
 ## Development status
 
-Credence is a prototype. Planned work includes formula syntax, tilting,
+Credence is a prototype. Planned work includes formula syntax,
 propagation of judgment uncertainty, and interactive controls.
