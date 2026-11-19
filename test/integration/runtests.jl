@@ -11,7 +11,8 @@ using ADTypes: AutoForwardDiff
 using ForwardDiff
 import Enzyme
 using LogDensityProblems: LogDensityProblems
-using Wren: @wren, @observe, VecModel, FromPrior, nuts, AutoEnzyme, Reverse
+using Wren:
+    @wren, @observe, VecModel, FromPrior, nuts, AutoEnzyme, Reverse, parameters, simulate
 import WrenCore
 using VarNames: @vn
 include("../compound/fixtures.jl")
@@ -212,7 +213,7 @@ end
     @test Plaice.vec_length(prior) == Plaice.unconstrained_vec_length(prior) == 3
 
     model = regression(prior, 0.4)
-    draw = rand(Xoshiro(783), model)[@vn(theta)]
+    draw = parameters(simulate(model, Xoshiro(783)))[@vn(theta)]
     @test draw.sigma > 0
     @test isfinite(MeasureBase.logdensityof(prior, draw))
     vm = VecModel(model, AutoForwardDiff(); latent_source=FromPrior(Xoshiro(784)))

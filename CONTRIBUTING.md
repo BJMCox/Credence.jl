@@ -51,7 +51,8 @@ Keep the favicon in `docs/src/assets/favicon.ico` consistent with the logo.
 
 ## Wren integration
 
-The Wren repository is private. These checks require access to its pinned revision:
+Wren is available from its public repository. The integration project lists its source
+revisions while Wren awaits registration. Instantiate it with Pkg:
 
 ```sh
 julia --project=test/integration -e 'using Pkg; Pkg.instantiate()'
@@ -59,13 +60,13 @@ julia --project=test/integration test/integration/runtests.jl
 julia --project=test/integration examples/wren.jl
 ```
 
-The integration tests cover joint Wren inference with ForwardDiff and Enzyme. They run
-locally because public CI cannot access the private dependency.
+The integration tests cover joint Wren inference with ForwardDiff and Enzyme. CI runs
+the tests and the Wren example on Linux.
 
-The Enzyme example elides only its read-only prior's defensive copy to avoid
+The Enzyme tests elide only the read-only prior's defensive copy to avoid
 [Enzyme #3527](https://github.com/EnzymeAD/Enzyme.jl/issues/3527), related to
-[#3561](https://github.com/EnzymeAD/Enzyme.jl/issues/3561). It uses the pinned Wren
-version's internal copy-selection API. Keep copies of mutable work buffers enabled.
+[#3561](https://github.com/EnzymeAD/Enzyme.jl/issues/3561). The example uses ForwardDiff
+through Wren's public API.
 
 ## Pull requests
 
@@ -73,5 +74,5 @@ Create a branch and target `main`. Keep each change focused and describe its use
 effect. Update examples and documentation when behavior changes.
 
 Run the relevant tests and the documentation build before requesting review. Include the
-commands and results in the pull request. Note any private integration checks you could not run.
+commands and results in the pull request.
 CI also checks Julia and Markdown formatting with JuliaFormatter.
