@@ -97,11 +97,8 @@ function Base.show(io::IO, selection::Selection)
     show(io, _fit_report(selection.report).results[selection.index].id)
     print(io, ", ", selection.role, ")")
 end
-Base.show(
-    io::IO,
-    ::MIME"text/plain",
-    value::Union{Elicitation,FitReport,FitResult,Validation,Selection},
-) = show(io, value)
+Base.show(io::IO, ::MIME"text/plain", value::Union{Elicitation,FitResult,Selection}) =
+    show(io, value)
 """
     priorplot(report_or_validation, [target]; bounds, xlabel)
 

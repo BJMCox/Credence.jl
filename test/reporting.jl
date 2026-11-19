@@ -7,7 +7,7 @@ using Optimization, OptimizationOptimJL
     )
     candidates = (
         Candidate(:normal, p -> asmeasure(Normal(p[1], 1.0)), [0.0]),
-        Candidate(:failure, _ -> error("builder failure"), [0.0]),
+        Candidate(Symbol("<failure>"), _ -> error("builder failure"), [0.0]),
     )
     problem = Elicitation(beliefs, candidates)
     report = fit(Xoshiro(72), problem)
@@ -38,15 +38,22 @@ using Optimization, OptimizationOptimJL
     @test rows[2].target == (0.5, 1.5) &&
           rows[2].value == 1.0 &&
           rows[2].status == :satisfied
-    failed = Credence.belief_summary(validation; result_id=(:failure, 1))
+    failed = Credence.belief_summary(validation; result_id=(Symbol("<failure>"), 1))
     @test all(
         row -> row.status == :undefined && row.value === nothing && row.error !== nothing,
         failed,
     )
     selection =
         select(report, (:normal, 1); validation, rationale="Reviewed mean and spread")
-    @test all((problem, report, report.results[1], validation, selection)) do value
+    @test all((problem, report.results[1], selection)) do value
         text = repr(MIME"text/plain"(), value)
         length(text) < 200 && !occursin("var\"", text)
     end
+    @test occursin("Candidate fits", repr(MIME"text/plain"(), report))
+    text = repr(MIME"text/plain"(), validation)
+    @test occursin("Belief checks", text) && occursin("≈ 0.5", text)
+    @test occursin("[0.5, 1.5]", text) && occursin("undefined", text)
+    html = repr(MIME"text/html"(), validation)
+    @test occursin("<table>", html) && occursin("&lt;failure&gt;", html)
+    @test !occursin("<failure>", html)
 end

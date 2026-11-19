@@ -34,7 +34,7 @@ report = fit(
     maxiters=1000,
 )
 validation = validate(Xoshiro(402), report)
-belief_summary(validation)
+validation
 
 # The fitted means can be compared with the elicited targets and bounds. The
 # river mean follows from the sum-to-one constraint.

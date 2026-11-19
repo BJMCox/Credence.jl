@@ -47,16 +47,7 @@ beliefs = (
 problem = Elicitation(beliefs, candidates)
 report = fit(Xoshiro(501), problem; sampling=MonteCarlo(10_000))
 validation = validate(Xoshiro(502), report)
-map(belief_summary(validation)) do row
-    (;
-        family=row.result_id[2],
-        belief=last(row.belief_id),
-        row.value,
-        row.lower,
-        row.upper,
-        row.status,
-    )
-end
+validation
 
 # Compare the tails of the largest absolute coefficient using 10,000 prior draws
 # from each family. The reference point marks the elicited 15% chance of exceeding 1.

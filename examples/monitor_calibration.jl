@@ -44,7 +44,7 @@ problem = Elicitation(
 options = (; adtype=Optimization.AutoForwardDiff(), maxiters=1000)
 report = fit(Xoshiro(301), problem, IPNewton(); options...)
 validation = validate(Xoshiro(302), report)
-compare(report; validation)
+report
 
 # The staff revise their lag estimate to 11 seconds after reviewing operation
 # at a lower flow rate. Replace that one belief and validate the new fit.
@@ -52,7 +52,7 @@ compare(report; validation)
 revised = replace(problem, :lag => Approximate(:mean, Mean(), 11.0; scale=2.0))
 refitted = fit(Xoshiro(303), revised, IPNewton(); options...)
 checks = validate(Xoshiro(304), refitted)
-belief_summary(checks; result_id=(:lognormal_lag, 1))
+checks
 
 # Compare the initial and revised LogNormal lag densities. The probability checks
 # then show whether the revised candidates still meet all three coverage requirements.

@@ -63,7 +63,7 @@ report = fit(
     g_tol=1e-14,
 )
 validation = validate(Xoshiro(1002), report)
-display(belief_summary(validation))
+validation
 
 # These targets correspond to `p.beta = [0.2, -0.1]` and `p.log_sigma = -0.3`.
 # The fixed correlation is about 0.447. Review its discrepancy alongside those of
@@ -114,7 +114,7 @@ predictive_problem = Elicitation(
 )
 predictive_report = fit(Xoshiro(1005), predictive_problem; sampling=MonteCarlo(10_000))
 predictive_validation = validate(Xoshiro(1006), predictive_report)
-display(belief_summary(predictive_validation))
+predictive_validation
 
 # This check draws from the elicited prior and the Wren observation model. All beliefs
 # about `future_y` share the same simulated observations.
