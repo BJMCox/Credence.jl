@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+  - Add comparative scalar prior density plots through an optional Makie extension.
   - Support `preserve_marginals=true` for any named pair in an independent reference prior.
   - Support joint interval-probability tilting of named independent priors.
   - Restore batched draws for named tilted priors.

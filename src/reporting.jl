@@ -102,3 +102,15 @@ Base.show(
     ::MIME"text/plain",
     value::Union{Elicitation,FitReport,FitResult,Validation,Selection},
 ) = show(io, value)
+"""
+    priorplot(report_or_validation, [target]; bounds, xlabel)
+
+Overlay the fitted prior densities on a common finite interval `bounds=(lower, upper)`.
+Pass a parameter name or `VarName` for a named scalar marginal. Omit the target for
+scalar fits without parameter names. The plot includes successful fits, including
+fits that fail a belief check, so their densities can be compared.
+
+Load a Makie backend such as CairoMakie to use this function. It returns a Makie
+`Figure`. Each plotted measure must be a normalized continuous scalar law.
+"""
+function priorplot end

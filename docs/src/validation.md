@@ -123,6 +123,11 @@ fit_summary(report)
 belief_summary(validation; result_id=(:normal, 1))
 ```
 
+Load CairoMakie and call [`priorplot`](@ref) with a fit report or its validation
+to overlay densities on a common interval. The
+[calibration tolerance example](@ref zero-offset-tutorial) shows how to compare
+both fits against the same requirement.
+
 ## Selection
 
 `select(report, id; validation, rationale)` records acceptance of a fitted result.

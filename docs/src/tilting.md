@@ -32,6 +32,28 @@ constant within the event and its complement. Their reference probabilities dete
 the two constants analytically. `rand(Xoshiro(702), prior^4096)` draws independently
 from the updated law through bounded rejection.
 
+The density changes at zero. Each side keeps the reference shape, with a different weight.
+
+```@example tilting
+using CairoMakie
+
+figure = Figure(; size=(660, 380))
+axis = Axis(figure[1, 1]; xlabel="Standardized offset", ylabel="Prior density")
+x = range(-4, 4; length=241)
+lines!(axis, x, exp.(logdensityof.(Ref(reference), x)); label="Reference")
+left = range(-4, 0; length=121)
+right = range(nextfloat(0.0), 4; length=121)
+lines!(axis, left, exp.(logdensityof.(Ref(prior), left)); color=:darkorange, label="Tilted")
+lines!(axis, right, exp.(logdensityof.(Ref(prior), right)); color=:darkorange)
+vlines!(axis, [0]; color=:gray, linestyle=:dash)
+axislegend(axis)
+mkpath("elicitation-output")
+save("elicitation-output/tilted-offset.svg", figure)
+nothing # hide
+```
+
+![Reference and tilted densities for the standardized offset.](elicitation-output/tilted-offset.svg)
+
 The lower ratio bound preserves the reference's positive-mass regions. A zero lower
 bound permits boundary solutions, including conditioning on an event. Both the event
 and its complement constrain the feasible probability range.
@@ -174,6 +196,35 @@ prior = measure(report)
 supplies objective and constraint derivatives and checks the original requirements.
 The shortest scenario reaches the lower ratio bound, so its weight falls from
 25% to 12.5%.
+
+```@example finite_tilt
+using CairoMakie
+
+figure = Figure(; size=(660, 380))
+axis = Axis(
+    figure[1, 1];
+    xlabel="Outage duration (hours)",
+    ylabel="Scenario probability",
+    xticks=(collect(durations), string.(collect(durations))),
+)
+x = collect(durations)
+weights = [exp(logdensityof(prior, duration)) for duration in durations]
+barplot!(
+    axis,
+    x .- 0.16,
+    collect(reference.weights);
+    width=0.28,
+    color=:steelblue,
+    label="Reference",
+)
+barplot!(axis, x .+ 0.16, weights; width=0.28, color=:darkorange, label="Tilted")
+axislegend(axis; position=:lt)
+mkpath("elicitation-output")
+save("elicitation-output/tilted-scenarios.svg", figure)
+nothing # hide
+```
+
+![Reference and tilted probabilities for the three outage scenarios.](elicitation-output/tilted-scenarios.svg)
 
 Finite constraints can force atoms to zero mass or to a ratio cap. The solver removes
 coordinates proved fixed by an extremal requirement before optimizing the remaining

@@ -12,11 +12,17 @@ Optimization = "7f7a1694-90dd-40f0-9382-eb1efda571ba"
 OptimizationOptimJL = "36348300-93cb-4f02-beb5-3c3902f8871e"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 VarNames = "09a315b2-63fc-4165-8d7f-d59368e770cc"
+Wren = "bcabdda7-19af-429b-97ac-a6b557ca0f6c"
+WrenCore = "008b59e7-bbda-4991-901b-b08f5cfc584d"
+WrenDists = "2ad4af40-d7c9-42b2-92b0-e09d37d1e75a"
 
 [sources]
 Credence = {path = ".."}
 HeterogeneousComputing = {rev = "18f24c9b7b7ad92e89cabb96cddfd4ef12d4565d", url = "https://github.com/oschulz/HeterogeneousComputing.jl"}
 MeasureBase = {rev = "235c1e611c00fa0e4d5a8323bb4414b39670d52e", url = "https://github.com/JuliaMath/MeasureBase.jl"}
+Wren = {url = "https://github.com/JuliaBayes/Wren.jl", subdir = "Wren", rev = "42dfedef0564b739a8e16d2c635e6306137b39a9"}
+WrenCore = {url = "https://github.com/JuliaBayes/Wren.jl", subdir = "WrenCore", rev = "42dfedef0564b739a8e16d2c635e6306137b39a9"}
+WrenDists = {url = "https://github.com/JuliaBayes/Wren.jl", subdir = "WrenDists", rev = "42dfedef0564b739a8e16d2c635e6306137b39a9"}
 
 [compat]
 CairoMakie = "0.15"

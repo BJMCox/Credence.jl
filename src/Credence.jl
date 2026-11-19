@@ -27,7 +27,7 @@ export Joint, Derived, Correlation, Covariance, CorrelationMatrix, CovarianceMat
 export NormalFamily, LogNormalFamily, ScaledBetaFamily, TruncatedFamily, IIDFamily
 export MvNormalFamily, MvLogNormalFamily, Independent, AllCombinations, unlock
 export diagnostics, flatppl
-export fit_summary, belief_summary
+export fit_summary, belief_summary, priorplot
 export GammaFamily, WeibullFamily, ExponentialFamily, StudentTFamily, CauchyFamily
 export LaplaceFamily,
     HalfNormalFamily, HalfStudentTFamily, DirichletFamily, MvStudentTFamily
