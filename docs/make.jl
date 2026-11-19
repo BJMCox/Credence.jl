@@ -64,7 +64,7 @@ makedocs(;
     modules=[Credence],
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://bjmcox.github.io/Credence.jl/stable/",
+        canonical="https://bjmcox.github.io/Credence.jl/dev/",
         edit_link="main",
         inventory_version="",
         assets=["assets/favicon.ico"],

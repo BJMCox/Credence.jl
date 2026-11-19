@@ -10,29 +10,32 @@ through Plaice.
 
 ## Installation
 
-Install the prototype from its source repository:
+Install Credence from the Julia REPL with Julia 1.13.
 
-```sh
-git clone https://github.com/BJMCox/Credence.jl.git
-cd Credence.jl
-julia --project=. dev/setup.jl
+```julia
+using Pkg
+Pkg.add(url="https://github.com/BJMCox/Credence.jl.git")
 ```
-
-The package supports Julia 1.10 and later. Use Julia 1.13 or later for the examples.
 
 ## A first example
 
+Add Distributions to use the built-in distribution families.
+
+```julia
+Pkg.add("Distributions")
+```
+
 Suppose the prior median of `x` must lie between -0.1 and 0.1. Represent this requirement
-with `Hard`, and compare standard Normal and Exponential priors:
+with `Hard` and compare standard Normal and Exponential priors.
 
 ```@example start
-using Credence, MeasureBase, Random
+using Credence, Distributions, Random
 
 beliefs = (:x => (Hard(:median, Quantile(0.5), Between(-0.1, 0.1)),),)
 candidates = (
     :x => (
-        Candidate(:normal, _ -> StdNormal(), [0.0]),
-        Candidate(:exponential, _ -> StdExponential(), [0.0]),
+        :normal => NormalFamily(location=0.0, scale=1.0),
+        :exponential => ExponentialFamily(scale=1.0),
     ),
 )
 problem = Elicitation(beliefs, candidates)
@@ -45,7 +48,7 @@ map(validation.checks) do checks
 end
 ```
 
-`fit` evaluates each candidate at its declared starting parameters. The Normal median
+`fit` evaluates each candidate at its declared parameters. The Normal median
 is 0 and satisfies the requirement. The Exponential median is `log(2)` and falls outside
 the interval.
 
