@@ -6,14 +6,12 @@ Include a small runnable example, the Julia version, and the expected and observ
 
 ## Development setup
 
-Use Julia 1.13 or later for the examples, documentation, and Wren integration environment.
-The core supports Julia 1.10 and later. Run commands from the repository root.
+Use Julia 1.13 and run commands from the repository root.
 
-The prototype uses pinned MeasureBase and HeterogeneousComputing development APIs.
-Install those pins with the setup script:
+Instantiate the project to install its pinned dependencies:
 
 ```sh
-julia --project=. dev/setup.jl
+julia --project=. -e 'using Pkg; Pkg.instantiate()'
 ```
 
 ## Package tests
@@ -38,7 +36,7 @@ corresponding documentation tutorial.
 ## Documentation
 
 ```sh
-julia --project=docs -e 'include("dev/setup.jl"); Pkg.develop(path="."); Pkg.instantiate()'
+julia --project=docs -e 'using Pkg; Pkg.instantiate()'
 julia --project=docs docs/make.jl
 ```
 
