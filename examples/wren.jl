@@ -12,7 +12,6 @@
 # ```
 #
 # The environment pins development versions of Wren, Plaice, and MeasureBase.
-# Installing Wren requires access to its private repository.
 
 using Credence
 using MeasureBase: MeasureBase

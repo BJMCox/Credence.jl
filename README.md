@@ -16,7 +16,7 @@ numerical fitting. Plaice connects selected joint priors to Wren models.
 
 ## Installation
 
-Credence is not registered. Clone the repository and install its pinned development dependencies:
+Install Credence from source with its pinned development dependencies:
 
 ```sh
 git clone https://github.com/BJMCox/Credence.jl.git
@@ -53,13 +53,19 @@ rand(Xoshiro(3), prior^5)
 
 Here `fit` evaluates the declared parameter points. The
 [signal-background example](examples/scalar.jl) compares prior families for six model hyperparameters,
-revises a judgment, and examines prior predictions.
+adds a joint calibration belief, and examines prior predictions. Run it from the checkout
+with Julia 1.13 or later:
+
+```sh
+julia --project=examples -e 'using Pkg; Pkg.instantiate()'
+julia --project=examples examples/scalar.jl
+```
 
 ## Documentation and support
 
 Start with the [guide](docs/src/index.md), [beliefs and validation](docs/src/validation.md),
-or [API reference](docs/src/api.md). The [Wren example](examples/wren.jl) shows a joint prior
-and requires access to the private Wren repository.
+or [API reference](docs/src/api.md). The [Wren example](examples/wren.jl) uses a joint prior
+in a regression model.
 
 The [FlatPPL example](examples/flatppl.jl) elicits a joint prior and exports a complete
 counting model, with density checks against Julia.
