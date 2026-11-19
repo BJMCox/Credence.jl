@@ -24,7 +24,21 @@ function self_contained(source)
     return source
 end
 
-for name in ("scalar", "wren", "flatppl")
+examples = [
+    "Easy" =>
+        ["Calibration tolerance" => "zero_offset", "Pump repair time" => "pump_repair"],
+    "Intermediate" => [
+        "Monitor calibration" => "monitor_calibration",
+        "Water-source fractions" => "water_sources",
+    ],
+    "Advanced" => ["Signal and background" => "scalar", "Wren integration" => "wren"],
+    "Very advanced" => [
+        "Shrinkage for building load" => "shrinkage",
+        "FlatPPL integration" => "flatppl",
+    ],
+]
+
+for (_, group) in examples, (_, name) in group
     options = if name == "wren"
         (; codefence="```julia" => "```")
     else
@@ -58,16 +72,15 @@ makedocs(;
     pages=[
         "Getting started" => "index.md",
         "Examples" => [
-            "Base elicitation" => "tutorials/scalar.md",
-            "Wren integration" => "tutorials/wren.md",
-            "FlatPPL integration" => "tutorials/flatppl.md",
+            level => [title => "tutorials/$name.md" for (title, name) in group] for
+            (level, group) in examples
         ],
         "Guide" => [
             "Named inputs" => "inputs.md",
             "Candidate families" => "families.md",
             "Beliefs and validation" => "validation.md",
-            "Reference-prior updates" => "tilting.md",
         ],
+        "Tilting an existing prior" => "tilting.md",
         "Reference" => "api.md",
     ],
     plugins=[CodeBlocks()],

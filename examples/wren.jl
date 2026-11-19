@@ -1,8 +1,8 @@
 # # [Using an elicited prior in Wren](@id wren-tutorial)
 #
-# This example uses an elicited prior in a Normal regression. The parameters are the
-# intercept `beta[1]`, slope `beta[2]`, and residual standard deviation `sigma`.
-# We fit their prior to expert judgments, then observe `y = 0.4` at `x = 2`.
+# A sensor calibration relates a standardized reading `y` to a centered reference input `x`.
+# The parameters are the intercept `beta[1]`, slope `beta[2]`, and residual standard
+# deviation `sigma`. Fit their prior, then condition on a reading of 0.4 at input 2.
 #
 # Run the example from the package directory with Julia 1.13 or later:
 #
@@ -29,9 +29,8 @@ using VarNames: @vn
 # ## Define the prior
 #
 # The coefficients have a bivariate Normal prior with fitted mean `p.beta` and fixed
-# covariance `covariance`. Independently, `sigma` has a LogNormal prior with fitted
-# log location `p.log_sigma` and fixed log standard deviation 0.4.
-# Thus fitting changes three location parameters. The covariance and spread are family assumptions.
+# covariance `covariance` based on previous calibrations. Independently, `sigma` has a
+# LogNormal prior with fitted log location `p.log_sigma` and fixed log standard deviation 0.4.
 
 covariance = [1.0 0.4; 0.4 0.8]
 function build_prior(p)
@@ -48,12 +47,14 @@ candidate = Candidate(:joint, build_prior, ((beta=zeros(2), log_sigma=0.0),))
 # ## Fit the judgments
 #
 # Suppose the expert gives mean 0.2 for the intercept, mean -0.1 for the slope, and
-# median `exp(-0.3)`, approximately 0.741, for `sigma`. The targets below use scale 1.
-# The vector mean target contributes the average squared error across its two entries.
+# median `exp(-0.3)`, approximately 0.741, for `sigma`. The expert expects a coefficient
+# correlation near 0.45. Record it as a joint belief to check against the fixed covariance.
 
 beliefs = (
     :beta => (Approximate(:mean, Mean(), [0.2, -0.1]; scale=1.0),),
     :sigma => (Approximate(:median, Quantile(0.5), exp(-0.3); scale=1.0),),
+    Joint(@vn(beta[1]), @vn(beta[2])) =>
+        (Approximate(:correlation, Correlation(), 0.45; scale=0.1),),
 )
 problem = Elicitation(beliefs, [candidate])
 report = fit(
@@ -68,8 +69,8 @@ validation = validate(Xoshiro(1002), report)
 display(belief_summary(validation))
 
 # These targets correspond to `p.beta = [0.2, -0.1]` and `p.log_sigma = -0.3`.
-# Check the achieved statistics in `belief_summary(validation)`. Their status is `:target` because
-# the beliefs specify approximate targets. Selection records acceptance of this fit and its assumptions.
+# The fixed correlation is about 0.447. Review its discrepancy alongside those of
+# the fitted means and median before accepting the prior.
 
 selection = select(
     report,

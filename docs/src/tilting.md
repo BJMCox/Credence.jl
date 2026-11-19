@@ -1,4 +1,4 @@
-# [Updating a reference prior](@id tilting-guide)
+# [Tilting an existing prior](@id tilting-guide)
 
 Bounded-KL tilting adjusts a fixed reference prior to satisfy further probability or
 expectation requirements. It minimizes `D(Q || P)` subject to those requirements and
@@ -74,21 +74,37 @@ The density jumps at the event boundary, so check sampler behavior near either
 threshold if you use gradient-based inference. The same `save_session` and
 `flatppl` calls below also work for this prior.
 
-### Keep the marginal laws fixed
+### [Keep the marginal laws fixed](@id fixed-marginals)
 
-Suppose separate calibration results already determine both marginal laws. A new
-joint probability can change their dependence while keeping both laws fixed.
+In the [signal-background model](@ref scalar-tutorial), separate calibrations
+inform the line location and signal width. Use a Normal location prior centered
+at 125 keV and a LogNormal width prior with median 1.6 keV. In the reference,
+both parameters exceed their medians in 25% of draws. A joint calibration
+places that probability between 36% and 37%.
+
 Use `preserve_marginals=true` with one belief that names a pair of parameters
-in an independent product. All other factors remain independent of the pair.
+in an independent product. Here the signal rate stays independent of the pair.
 
-```@example joint_tilt
-beliefs = (Hard(:both_positive, both_positive, Between(0.36, 0.37)),)
-fixed = tilt(reference, beliefs, BoundedKL(lower=0.5, upper=2); preserve_marginals=true)
-fixed_prior = measure(fixed)
+```@example fixed_marginals
+using Credence, MeasureBase, Random
+using Distributions: Normal, LogNormal
+
+reference = productmeasure((
+    rate=StdExponential(),
+    mu=asmeasure(Normal(125.0, 0.6)),
+    width=asmeasure(LogNormal(log(1.6), 0.3)),
+))
+high_and_wide = Probability(mu=(125.0, Inf), width=(1.6, Inf))
+beliefs = (Hard(:high_and_wide, high_and_wide, Between(0.36, 0.37)),)
+report = tilt(reference, beliefs, BoundedKL(lower=0.5, upper=2); preserve_marginals=true)
+checks = validate(Xoshiro(705), report)
+choice = select(report; validation=checks, rationale="Reviewed joint calibration.")
+prior = measure(choice)
 (
-    both_positive=evaluate(both_positive, fixed_prior).value,
-    gain_positive=evaluate(Probability(gain=(0, Inf)), fixed_prior).value,
-    offset_positive=evaluate(Probability(offset=(0, Inf)), fixed_prior).value,
+    before=evaluate(high_and_wide, reference).value,
+    after=evaluate(high_and_wide, prior).value,
+    mu_above_median=evaluate(Probability(mu=(125.0, Inf)), prior).value,
+    width_above_median=evaluate(Probability(width=(1.6, Inf)), prior).value,
 )
 ```
 
@@ -99,7 +115,7 @@ within each cell preserve each full marginal law.
 
 The ratio bounds and fixed marginals restrict the joint probability to 0.125–0.375
 in this example. An infeasible belief raises an error with the attainable range.
-Draw a batch with `rand(Xoshiro(705), fixed_prior^32)`. The updated prior supports
+Draw a batch with `rand(Xoshiro(706), prior^32)`. The updated prior supports
 saved sessions and FlatPPL export.
 
 ## Moment requirements
@@ -132,10 +148,32 @@ Scalar continuous integration requires an atom-free reference with an SMF and in
 Known interval boundaries split the integration domain. `Quadrature` sets the error
 target and evaluation budget over the full reference probability range.
 
-For an actual finite law, declare its support and relative masses with
-`FiniteReference((0.0, 1.0, 2.0), (1, 2, 1))`. Use `IPNewton()` for its constrained
-primal problem. The finite solver supplies objective and constraint derivatives and
-checks the original requirements after solving.
+## Finite scenario weights
+
+A service team represents outage duration by three scenarios of 0.5, 1.5, and
+2.5 hours, with reference probabilities of 25%, 50%, and 25%. A review revises
+the expected duration to 1.85 hours. Keep the scenario durations fixed and
+change their probabilities within the same density ratio bounds.
+
+```@example finite_tilt
+using Credence, MeasureBase, Optimization, OptimizationOptimJL
+
+durations = (0.5, 1.5, 2.5)
+reference = FiniteReference(durations, (1, 2, 1))
+beliefs = (Hard(:mean_duration, Mean(), EqualTo(1.85)),)
+report = tilt(reference, beliefs, BoundedKL(lower=0.5, upper=2), IPNewton(); abstol=1e-12)
+prior = measure(report)
+(
+    probabilities=map(duration -> exp(logdensityof(prior, duration)), durations),
+    mean=evaluate(Mean(), prior).value,
+    feasibility=report.feasibility,
+)
+```
+
+`FiniteReference` normalizes the relative scenario weights. The finite solver
+supplies objective and constraint derivatives and checks the original requirements.
+The shortest scenario reaches the lower ratio bound, so its weight falls from
+25% to 12.5%.
 
 Finite constraints can force atoms to zero mass or to a ratio cap. The solver removes
 coordinates proved fixed by an extremal requirement before optimizing the remaining

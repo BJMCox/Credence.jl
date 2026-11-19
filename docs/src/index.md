@@ -71,21 +71,27 @@ For numerical fitting, load Optimization.jl and call `fit(rng, problem, algorith
 
 ## Examples and guides
 
-The [signal-background example](@ref scalar-tutorial) defines a rare-event model and elicits
-priors for its six hyperparameters. It includes candidate families, a revised judgment,
-prior selection and prior predictive checks, with all definitions on the page.
+Each example starts with its own judgments and candidate priors. Run the Julia scripts
+from the package directory with Julia 1.13 or later. Wren uses the environment listed
+on its example page.
 
-The [Wren example](@ref wren-tutorial) elicits a joint regression prior and uses it to
-sample a posterior with NUTS.
+```sh
+julia --project=examples -e 'using Pkg; Pkg.instantiate()'
+julia --project=examples examples/pump_repair.jl
+```
 
-The [FlatPPL example](@ref flatppl-tutorial) elicits detector efficiency and event rate,
-exports the fitted prior, and defines a counting likelihood in FlatPPL.
+| Level         | Examples                                                                                                                                        |
+|:------------- |:----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Easy          | [Check a calibration tolerance](@ref zero-offset-tutorial) and [fit two families to repair times](@ref pump-repair-tutorial).                   |
+| Intermediate  | [Revise and save a monitor calibration](@ref monitor-calibration-tutorial) and [fit a vector of source fractions](@ref water-sources-tutorial). |
+| Advanced      | [Check prior predictions for a rare-event search](@ref scalar-tutorial) and [sample a posterior in Wren](@ref wren-tutorial).                   |
+| Very advanced | [Compare compound shrinkage priors](@ref shrinkage-tutorial) and [export a complete FlatPPL model](@ref flatppl-tutorial).                      |
 
 [Named inputs](@ref input-guide) describes parameter references, arrays, and joint beliefs.
 [Beliefs and validation](@ref validation-guide) defines the fitting objective, candidate
 comparisons, and the evidence required for acceptance.
-[Updating a reference prior](@ref tilting-guide) covers tilting for further probability or
-expectation requirements. The [API reference](@ref api-reference) documents the constructors
+[Tilting an existing prior](@ref tilting-guide) covers further probability or expectation
+requirements for a fixed reference. The [API reference](@ref api-reference) documents the constructors
 and methods.
 
 ## Development status
