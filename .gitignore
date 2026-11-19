@@ -1,9 +1,7 @@
 Manifest*.toml
 docs/build/
 docs/site/
-docs/src/tutorials/scalar.md
-docs/src/tutorials/wren.md
-docs/src/tutorials/flatppl.md
+docs/src/tutorials/*.md
 elicitation-output/
 *.cov
 *.mem

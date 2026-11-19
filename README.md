@@ -53,7 +53,7 @@ rand(Xoshiro(3), prior^5)
 
 Here `fit` evaluates the declared parameter points. The
 [signal-background example](examples/scalar.jl) compares prior families for six model hyperparameters,
-adds a joint calibration belief, and examines prior predictions. Run it from the checkout
+revises a calibration judgment, and examines prior predictions. Run it from the checkout
 with Julia 1.13 or later:
 
 ```sh

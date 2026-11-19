@@ -113,7 +113,7 @@ point = (efficiency=0.8, rate=4.0)
 prior_logdensity = logdensityof(prior, point)
 posterior_logdensity =
     prior_logdensity + logpdf(Poisson(3.0 * point.efficiency * point.rate), 11)
-display((; point, prior_logdensity, posterior_logdensity))
+(; point, prior_logdensity, posterior_logdensity)
 
 # The posterior measure includes the likelihood but retains its unknown normalizing constant.
 # Posterior inference can use this density in the host environment.
