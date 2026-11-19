@@ -39,11 +39,6 @@ examples = [
 ]
 
 for (_, group) in examples, (_, name) in group
-    options = if name == "wren"
-        (; codefence="```julia" => "```")
-    else
-        (;)
-    end
     preprocess = identity
     if name == "scalar"
         preprocess = self_contained
@@ -53,7 +48,6 @@ for (_, group) in examples, (_, name) in group
         joinpath(@__DIR__, "src", "tutorials");
         credit=false,
         preprocess=preprocess,
-        options...,
     )
 end
 

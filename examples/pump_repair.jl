@@ -4,6 +4,8 @@
 # expects 90% of repairs to finish within 6 hours. Fit both a LogNormal and a Weibull.
 
 using Credence, Distributions, Optimization, OptimizationOptimJL, Random
+using MeasureBase: logdensityof
+using CairoMakie
 import ForwardDiff
 
 beliefs = (
@@ -31,6 +33,38 @@ map(report.results) do result
     (; id=result.id, exceeds_shift=evaluate(Probability(8, Inf), result.measure).value)
 end
 
+# The densities show where each family puts its mass around the common quantiles.
+# The conditional completion rate shows how the chance of finishing in the next
+# short interval changes as a repair remains open. It is the density divided by
+# the probability of still being open.
+
+mkpath("elicitation-output")
+density = priorplot(report, :hours; bounds=(0, 14), xlabel="Repair time (hours)")
+vlines!(content(density[1, 1]), [2, 6]; color=:gray, linestyle=:dash)
+save("elicitation-output/repair-density.svg", density)
+
+# ![Fitted repair duration densities with the elicited quantiles marked.](elicitation-output/repair-density.svg)
+
+completion = Figure(; size=(660, 380))
+axis = Axis(
+    completion[1, 1];
+    xlabel="Elapsed repair time (hours)",
+    ylabel="Completion rate (per hour)",
+)
+hours = range(0.25, 16; length=200)
+for (result, label) in zip(report.results, ("LogNormal", "Weibull"))
+    rate = map(hours) do t
+        exp(logdensityof(result.measure, t)) /
+        evaluate(Probability(t, Inf), result.measure).value
+    end
+    lines!(axis, hours, rate; label)
+end
+vlines!(axis, [8]; color=:gray, linestyle=:dash, label="End of shift")
+Legend(completion[2, 1], axis; orientation=:horizontal, framevisible=false)
+save("elicitation-output/repair-completion.svg", completion)
+
+# ![Conditional completion rate versus elapsed repair time.](elicitation-output/repair-completion.svg)
+#
 # Here the engineer chooses the LogNormal to represent multiplicative variation
 # in the time needed to diagnose, access, and repair the pump.
 

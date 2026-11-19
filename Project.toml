@@ -21,11 +21,13 @@ VarNames = "09a315b2-63fc-4165-8d7f-d59368e770cc"
 
 [weakdeps]
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 Optimization = "7f7a1694-90dd-40f0-9382-eb1efda571ba"
 Plaice = "55802ec2-189d-45e6-a786-b4d97e4775f1"
 
 [extensions]
 CredenceDistributionsExt = "Distributions"
+CredenceMakieExt = "Makie"
 CredenceOptimizationExt = "Optimization"
 CredencePlaiceExt = ["Plaice", "VarNames"]
 
@@ -40,6 +42,7 @@ IntervalSets = "0.7"
 Distributions = "0.25"
 ForwardDiff = "1"
 HeterogeneousComputing = "0.3"
+Makie = "0.24"
 MeasureBase = "0.15"
 QuadGK = "2"
 LinearAlgebra = "1"

@@ -5,6 +5,7 @@
 # and estimate a mean and standard deviation for each parameter.
 
 using Credence, Distributions, MeasureBase, Optimization, OptimizationOptimJL, Random
+using CairoMakie
 import ForwardDiff
 
 beliefs = (
@@ -53,6 +54,40 @@ refitted = fit(Xoshiro(303), revised, IPNewton(); options...)
 checks = validate(Xoshiro(304), refitted)
 belief_summary(checks; result_id=(:lognormal_lag, 1))
 
+# Compare the initial and revised LogNormal lag densities. The probability checks
+# then show whether the revised candidates still meet all three coverage requirements.
+
+mkpath("elicitation-output")
+revision = Figure(; size=(660, 380))
+axis = Axis(revision[1, 1]; xlabel="Response lag (s)", ylabel="Prior density")
+lags = range(0.1, 28; length=240)
+for (fit, label) in ((report, "Initial target: 10 s"), (refitted, "Revised target: 11 s"))
+    lag = marginals(first(fit.results).measure).lag
+    lines!(axis, lags, exp.(logdensityof.(Ref(lag), lags)); label)
+end
+vlines!(axis, [3, 25]; color=:gray, linestyle=:dash)
+axislegend(axis)
+save("elicitation-output/monitor-revision.svg", revision)
+
+# ![Response-lag densities before and after revising the mean target.](elicitation-output/monitor-revision.svg)
+
+coverage = Figure(; size=(690, 350))
+categories = ["Lag above 3 s", "Lag within 25 s", "Offset within ±3 μg/m³"]
+axis = Axis(coverage[1, 1]; ylabel="Fitted probability", xticks=(1:3, categories))
+for (i, (result, label)) in enumerate(zip(refitted.results, ("LogNormal lag", "Gamma lag")))
+    rows = belief_summary(checks; result_id=result.id)
+    ids = (:takes_over_3s, :responds_by_25s, :within_3)
+    values = [only(row.value for row in rows if last(row.belief_id) == id) for id in ids]
+    scatter!(axis, (1:3) .+ 0.12 * (i - 1.5), values; label)
+end
+hlines!(axis, [0.95]; color=:gray, linestyle=:dash, label="Required coverage")
+xlims!(axis, 0.55, 3.45)
+ylims!(axis, 0.93, 1.005)
+axislegend(axis; position=:lb)
+save("elicitation-output/monitor-coverage.svg", coverage)
+
+# ![Revised coverage probabilities against the common minimum.](elicitation-output/monitor-coverage.svg)
+#
 # Save the accepted prior with its fit and validation. Keep the original problem
 # and the reason for the revision in the session history.
 

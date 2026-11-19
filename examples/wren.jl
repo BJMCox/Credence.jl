@@ -14,6 +14,7 @@
 # The project lists the public source for Wren while it awaits registration.
 
 using Credence
+using CairoMakie
 using MeasureBase: MeasureBase
 using Distributions: Normal, MvNormal, LogNormal
 using Optimization, OptimizationOptimJL
@@ -118,6 +119,24 @@ display(belief_summary(predictive_validation))
 # This check draws from the elicited prior and the Wren observation model. All beliefs
 # about `future_y` share the same simulated observations.
 #
+# Compare the calibration reading with 4,000 draws at the same input, including
+# residual variation. The dotted line marks the elicited predictive mean.
+
+mkpath("elicitation-output")
+rng = Xoshiro(1007)
+prior_draws = rand(rng, prior^4000)
+readings = [simulate_future(rng, draw.beta, draw.sigma) for draw in prior_draws]
+predictive = Figure(; size=(660, 380))
+axis =
+    Axis(predictive[1, 1]; xlabel="Reading at input 2", ylabel="Prior predictive density")
+hist!(axis, readings; bins=45, normalization=:pdf, color=:steelblue)
+vlines!(axis, [0]; color=:black, linestyle=:dot, label="Elicited mean")
+vlines!(axis, [0.4]; color=:darkorange, linestyle=:dash, label="Observed reading")
+axislegend(axis)
+save("elicitation-output/wren-readings.svg", predictive)
+
+# ![Prior predictive readings and the calibration observation.](elicitation-output/wren-readings.svg)
+#
 # ## Sample the posterior
 #
 # Use ForwardDiff for the three-dimensional posterior log density.
@@ -128,3 +147,38 @@ display(size(chain))
 # `chain` contains 200 posterior draws in one FlexiChains chain, conditional on `y = 0.4`.
 # Each draw contains `theta`, with its coefficient vector and residual standard deviation.
 # Assess convergence and Monte Carlo error before reporting posterior estimates.
+#
+# The coefficient pairs show what a single observation can constrain. Points
+# near the dashed line predict the observed reading at input 2.
+
+coefficients = Figure(; size=(660, 420))
+axis = Axis(coefficients[1, 1]; xlabel="Intercept", ylabel="Slope")
+scatter!(
+    axis,
+    [draw.beta[1] for draw in prior_draws],
+    [draw.beta[2] for draw in prior_draws];
+    color=(:steelblue, 0.18),
+    markersize=4,
+    label="Prior",
+)
+scatter!(
+    axis,
+    vec(chain[@vn(theta.beta[1])]),
+    vec(chain[@vn(theta.beta[2])]);
+    color=(:darkorange, 0.75),
+    markersize=6,
+    label="Posterior",
+)
+intercepts = [-4, 4]
+lines!(
+    axis,
+    intercepts,
+    (0.4 .- intercepts) ./ 2;
+    color=:black,
+    linestyle=:dash,
+    label="Mean predicts observed reading",
+)
+axislegend(axis)
+save("elicitation-output/wren-coefficients.svg", coefficients)
+
+# ![Prior and posterior coefficient pairs at the calibration observation.](elicitation-output/wren-coefficients.svg)

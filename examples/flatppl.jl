@@ -13,6 +13,7 @@
 # ```
 
 using Credence, MeasureBase, Optimization, OptimizationOptimJL, Random
+using CairoMakie
 import ForwardDiff
 using Distributions: Poisson, logpdf
 
@@ -65,6 +66,38 @@ selection = select(
 prior = measure(selection)
 nothing # hide
 
+# Check the fitted marginal CDFs against the elicited quantile points.
+
+mkpath("elicitation-output")
+marginal_figure = Figure(; size=(760, 320))
+factors = marginals(prior)
+for (i, (law, grid, label, x, p)) in enumerate((
+    (
+        factors.efficiency,
+        range(0, 1; length=180),
+        "Detector efficiency",
+        [0.6, 0.8],
+        [0.05, 0.5],
+    ),
+    (
+        factors.rate,
+        range(0, 14; length=180),
+        "Event rate (events/hour)",
+        [4, 9],
+        [0.5, 0.95],
+    ),
+))
+    axis = Axis(marginal_figure[1, i]; xlabel=label, ylabel="Prior cumulative probability")
+    values = [evaluate(Probability(-Inf, t), law).value for t in grid]
+    lines!(axis, grid, values; label="Fitted prior")
+    scatter!(axis, x, p; color=:darkorange, marker=:diamond, label="Elicited quantile")
+    ylims!(axis, 0, 1.03)
+    i == 1 && axislegend(axis; position=:lt)
+end
+save("elicitation-output/detector-marginals.svg", marginal_figure)
+
+# ![Efficiency and rate CDFs with the elicited quantiles.](elicitation-output/detector-marginals.svg)
+#
 # ## Export the prior and define the likelihood
 #
 # `flatppl(selection)` returns a formatted measure expression. Its named factors retain
@@ -75,13 +108,15 @@ nothing # hide
 # count distribution, and `likelihoodof` fixes the observed count.
 # `bayesupdate` multiplies this likelihood by the exported prior to form an unnormalized posterior.
 
+exposure = 3.0
+observed_count = 11
 source = """
 flatppl_compat = "0.1"
 
 prior = $(flatppl(selection))
 
-exposure = 3.0
-observed_count = 11
+exposure = $exposure
+observed_count = $observed_count
 
 efficiency = elementof(interval(0.0, 1.0))
 rate = elementof(posreals)
@@ -95,7 +130,6 @@ prior_logdensity = logdensityof(prior, point)
 posterior_logdensity = logdensityof(posterior, point)
 """
 println(source)
-mkpath("elicitation-output")
 write("elicitation-output/counting-model.flatppl", source)
 nothing # hide
 
@@ -112,8 +146,32 @@ nothing # hide
 point = (efficiency=0.8, rate=4.0)
 prior_logdensity = logdensityof(prior, point)
 posterior_logdensity =
-    prior_logdensity + logpdf(Poisson(3.0 * point.efficiency * point.rate), 11)
+    prior_logdensity +
+    logpdf(Poisson(exposure * point.efficiency * point.rate), observed_count)
 (; point, prior_logdensity, posterior_logdensity)
 
 # The posterior measure includes the likelihood but retains its unknown normalizing constant.
 # Posterior inference can use this density in the host environment.
+#
+# ## Check the implied counts
+#
+# Simulate 10,000 counts under the exported model's prior and likelihood.
+# Compare the observed count with the resulting prior predictive frequencies.
+
+rng = Xoshiro(74)
+counts = map(1:10_000) do _
+    draw = rand(rng, prior)
+    rand(rng, Poisson(exposure * draw.efficiency * draw.rate))
+end
+predictive = Figure(; size=(660, 380))
+axis = Axis(
+    predictive[1, 1];
+    xlabel="Detected events in three hours",
+    ylabel="Fraction of prior predictive draws",
+)
+hist!(axis, counts; bins=-0.5:1:(maximum(counts)+0.5), normalization=:probability)
+vlines!(axis, [observed_count]; color=:black, linestyle=:dash, label="Observed count")
+axislegend(axis)
+save("elicitation-output/detector-counts.svg", predictive)
+
+# ![Prior predictions for detected counts, with the observation marked.](elicitation-output/detector-counts.svg)
